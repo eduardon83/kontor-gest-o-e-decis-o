@@ -518,9 +518,19 @@ Deno.serve(async (req) => {
         forca_vendas: b.forca_vendas,
         trabalhadores: trabalhadoresNovo, supervisores: supervisoresNovo, investigadores: investigadoresNovo,
         prejuizos_acum: prejuizosNovo, historia: [...b.estado.historia, `turno ${ronda.indice}`],
+        id: idNovo,
         turno: ronda.indice, vendas, receita, prodCost, fixed, interest, imposto, resultado: net,
         precos: b.precos, tiers: b.tiers, ritmo: b.ritmo, wageRatio: b.wageRatio,
         prodMult: b.prodMult, qualMult: b.qualMult,
+        perfil_emergente: b.perfilNome,
+        decisoes_resumo: {
+          id_orcamento: Number(b.dec.CFO?.id_orcamento ?? 0),
+          contratar_investigadores: Number(b.dec.CHRO?.contratar_investigadores ?? 0),
+          wageRatio: b.wageRatio,
+          formacao: b.formacao,
+          marketing: b.marketing,
+          producao_total: b.producao.cadeira + b.producao.mesa + b.producao.armario,
+        },
         macro, notas: b.auditoria,
       };
       snapshotsInsert.push({ equipa_id: b.equipa_id, ronda_id: ronda.id, snapshot });

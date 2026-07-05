@@ -202,7 +202,7 @@ Deno.serve(async (req) => {
       scale: number; eventCapMult: number;
       marketing: number; forca_vendas: number;
       export_share: number;
-      capex: number; formacao: number; bonus: number;
+      capex: number; comprarMaquinas: number; formacao: number; bonus: number;
       wageRatio: number; salarios: number;
       empréstimo_novo: number; amortizar: number; dividendos: number;
       rdCost: number; id_modo: string;

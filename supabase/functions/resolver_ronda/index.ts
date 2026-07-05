@@ -280,7 +280,16 @@ Deno.serve(async (req) => {
       }
       const tiers: Record<Produto, Tier> = { cadeira: tierEfetivo, mesa: tierEfetivo, armario: tierEfetivo };
       const subcontratacao = clamp(Number(coo.subcontratacao ?? 0), 0, 1);
-      const comprarMaquinas = Math.max(0, Math.floor(Number(coo.comprar_maquinas ?? 0)));
+      const comprarMaquinasPed = Math.max(0, Math.floor(Number(coo.comprar_maquinas ?? 0)));
+      const capex = Math.max(0, Number(dec.CFO?.capex ?? 0)); // pago em caixa
+      let comprarMaquinas = comprarMaquinasPed;
+      if (comprarMaquinasPed * 60000 > capex) {
+        comprarMaquinas = Math.floor(capex / 60000);
+        auditoria.push({
+          acao: "capex_limita_maquinas",
+          payload: { pedido: comprarMaquinasPed, aplicado: comprarMaquinas, capex },
+        });
+      }
       const id_modo = String(coo.id_modo ?? "interno");
 
       const alvo: Record<Produto, number> = {

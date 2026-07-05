@@ -95,11 +95,24 @@ export function BarraTopo() {
             ))}
           </select>
 
+          {competicao_id && equipa_id && (
+            <Link
+              to="/painel/jogador/competicao"
+              search={{ competicao: competicao_id, equipa: equipa_id }}
+              className="mono rounded-sm border px-2 py-1 text-[10px] uppercase tracking-widest text-paper hover:bg-gold/10"
+              style={{ borderColor: "var(--gold)" }}
+              title="Classificação"
+            >
+              <BarChart3 className="inline h-3 w-3" /> Classificação
+            </Link>
+          )}
+
           <button onClick={() => setDefAberto((v) => !v)} className="rounded-sm p-1.5 text-paper hover:bg-gold/10" title="Definições">
             <Settings className="h-4 w-4" />
           </button>
         </div>
       </div>
+
 
       {defAberto && (
         <div className="border-t bg-card px-6 py-3 text-foreground" style={{ borderColor: "color-mix(in oklab, var(--gold) 25%, transparent)" }}>

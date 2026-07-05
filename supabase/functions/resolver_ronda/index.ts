@@ -202,7 +202,7 @@ Deno.serve(async (req) => {
       scale: number; eventCapMult: number;
       marketing: number; forca_vendas: number;
       export_share: number;
-      capex: number; formacao: number; bonus: number;
+      capex: number; comprarMaquinas: number; formacao: number; bonus: number;
       wageRatio: number; salarios: number;
       empréstimo_novo: number; amortizar: number; dividendos: number;
       rdCost: number; id_modo: string;
@@ -280,7 +280,16 @@ Deno.serve(async (req) => {
       }
       const tiers: Record<Produto, Tier> = { cadeira: tierEfetivo, mesa: tierEfetivo, armario: tierEfetivo };
       const subcontratacao = clamp(Number(coo.subcontratacao ?? 0), 0, 1);
-      const comprarMaquinas = Math.max(0, Math.floor(Number(coo.comprar_maquinas ?? 0)));
+      const comprarMaquinasPed = Math.max(0, Math.floor(Number(coo.comprar_maquinas ?? 0)));
+      const capex = Math.max(0, Number(dec.CFO?.capex ?? 0)); // pago em caixa
+      let comprarMaquinas = comprarMaquinasPed;
+      if (comprarMaquinasPed * 60000 > capex) {
+        comprarMaquinas = Math.floor(capex / 60000);
+        auditoria.push({
+          acao: "capex_limita_maquinas",
+          payload: { pedido: comprarMaquinasPed, aplicado: comprarMaquinas, capex },
+        });
+      }
       const id_modo = String(coo.id_modo ?? "interno");
 
       const alvo: Record<Produto, number> = {
@@ -345,7 +354,8 @@ Deno.serve(async (req) => {
         auditoria.push({ acao: "emprestimo_clampado_teto", payload: { pedido: emprestimoPed, aplicado: emprestimoOk, teto: tetoDivida } });
       }
       const amortizar = Math.max(0, Math.min(Number(dec.CFO?.amortizar ?? 0), estado.divida + emprestimoOk));
-      const capex = Math.max(0, Number(dec.CFO?.capex ?? 0)); // pago em caixa
+      // capex já calculado acima (limita comprarMaquinas)
+
       const dividendos = Math.max(0, Number(dec.CEO?.dividendos ?? 0));
       const formacao = Math.max(0, Number(dec.CHRO?.formacao ?? 0));
       const bonus = Math.max(0, Number(dec.CHRO?.bonus ?? 0));
@@ -380,7 +390,7 @@ Deno.serve(async (req) => {
         qualMult, prodMult, scale, eventCapMult,
         marketing, forca_vendas,
         export_share,
-        capex, formacao, bonus,
+        capex, comprarMaquinas, formacao, bonus,
         wageRatio, salarios,
         empréstimo_novo: emprestimoOk, amortizar, dividendos,
         rdCost, id_modo,
@@ -496,7 +506,7 @@ Deno.serve(async (req) => {
         .reduce((s, p) => s + vendas[p] * b.custoUnit[p], 0);
       const wages = b.salarios; // já com ratio salarial aplicado
       const rent = 1500;
-      const dep = (b.estado.maquinas + Math.floor(Number(b.dec.COO?.comprar_maquinas ?? 0))) * 1000;
+      const dep = (b.estado.maquinas + b.comprarMaquinas) * 1000;
       const fixed = wages + rent + dep + b.formacao + b.marketing
         + b.forca_vendas * 2500 + Number(b.dec.CMO?.pesquisa_mercado ?? 0)
         + b.bonus;
@@ -509,7 +519,7 @@ Deno.serve(async (req) => {
       const net = pre - imposto;
 
       const equity = 0; // sem entradas de capital neste turno
-      const comprarMaquinas = Math.floor(Number(b.dec.COO?.comprar_maquinas ?? 0));
+      const comprarMaquinas = b.comprarMaquinas;
       const caixaNova = b.estado.caixa + net
         - comprarMaquinas * 60000
         + b.empréstimo_novo - b.amortizar
@@ -601,7 +611,9 @@ Deno.serve(async (req) => {
       const ranked = entradas
         .map((e) => ({
           equipa_id: e.equipa_id,
-          valor: (snapshotsInsert.find((s) => s.equipa_id === e.equipa_id) as { snapshot?: { caixa?: number } } | undefined)?.snapshot?.caixa ?? 0,
+          valor: Number(
+            (resultadosInsert.find((r) => r.equipa_id === e.equipa_id) as { valor?: number } | undefined)?.valor ?? 0,
+          ),
         }))
         .sort((a, b) => b.valor - a.valor);
       for (let i = 0; i < ranked.length; i++) {

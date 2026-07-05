@@ -88,6 +88,45 @@ Deno.serve(async (req) => {
       decisoesPorEquipa.set(d.equipa_id, arr);
     }
 
+    // ─── Oponentes IA — gera decisões heurísticas determinísticas ─────────────
+    // Perfis: agressivo_preco / foco_qualidade / equilibrado. Um por equipa IA.
+    const IA_PERFIS = ["agressivo_preco", "foco_qualidade", "equilibrado"] as const;
+    type IAPerfil = typeof IA_PERFIS[number];
+    const iaDecisoesInsert: Record<string, unknown>[] = [];
+    const iaAuditoria: Record<string, unknown>[] = [];
+    for (const eq of equipasArr) {
+      if (!eq.is_ia) continue;
+      if ((decisoesPorEquipa.get(eq.id)?.length ?? 0) > 0) continue;
+      const rIA = stream(Number(comp.seed) + ronda.indice * 7919, `ia:${eq.id}`);
+      const perfil: IAPerfil = IA_PERFIS[Math.abs(hashLabel(eq.id)) % IA_PERFIS.length];
+      const dec = gerarDecisoesIA(perfil, rIA, macro);
+      iaAuditoria.push({ acao: "ronda:ia_decisoes_geradas", alvo: eq.id, payload: { ronda_id: ronda.id, perfil } });
+      const agora = new Date().toISOString();
+      for (const lugar of PRECEDENCIA) {
+        const payload = dec[lugar];
+        iaDecisoesInsert.push({
+          ronda_id: ronda.id, equipa_id: eq.id, lugar,
+          payload, submetido_em: agora, gerado_por_ia: true,
+        });
+        const arr = decisoesPorEquipa.get(eq.id) ?? [];
+        arr.push({ lugar, payload, submetido_em: agora });
+        decisoesPorEquipa.set(eq.id, arr);
+      }
+    }
+    if (iaDecisoesInsert.length) {
+      // A coluna gerado_por_ia é opcional; tenta insert com; se falhar, retira-a.
+      const { error: eIA1 } = await sb.from("decisoes").insert(iaDecisoesInsert);
+      if (eIA1) {
+        const semFlag = iaDecisoesInsert.map((d) => {
+          const { gerado_por_ia: _x, ...rest } = d as Record<string, unknown>;
+          return rest;
+        });
+        await sb.from("decisoes").insert(semFlag);
+      }
+      await sb.from("log_auditoria").insert(iaAuditoria);
+    }
+
+
     const { data: colabs } = await sb.from("colaboradores")
       .select("*").in("equipa_id", equipasArr.map((e) => e.id));
     const colabsPorEquipa = new Map<string, typeof colabs>();
@@ -573,10 +612,14 @@ Deno.serve(async (req) => {
 
     await sb.from("rondas").update({ estado: "resolvida" }).eq("id", ronda.id);
     if (ronda.indice < comp.duracao_turnos) {
+      const dh = Number((comp.params as any)?.duracao_ronda_horas ?? 0);
+      const abre = new Date();
+      const prazo = dh > 0 ? new Date(abre.getTime() + dh * 3_600_000).toISOString() : null;
       await sb.from("rondas").insert({
         competicao_id: comp.id, indice: ronda.indice + 1, estado: "aberta",
-        abre_em: new Date().toISOString(),
+        abre_em: abre.toISOString(), prazo_em: prazo,
       });
+
     } else {
       await sb.from("competicoes").update({ estado: "terminada" }).eq("id", comp.id);
     }
@@ -636,3 +679,72 @@ function rollupPessoas(colabs: { motivacao: number; stress_individual: number; c
   const trab = colabs.filter((c) => c.papel_org === "trabalhador").length;
   return { M, S, A, competencia_norm: competencia_media / 60, prodBase_media, trab, superv };
 }
+
+// ─── IA — hash e política heurística ─────────────────────────────────────────
+function hashLabel(s: string): number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return h | 0;
+}
+
+function gerarDecisoesIA(
+  perfil: "agressivo_preco" | "foco_qualidade" | "equilibrado",
+  r: () => number,
+  macro: { confianca: number; crescimento: number },
+): Record<string, Record<string, unknown>> {
+  const jitter = (lo: number, hi: number) => lo + (hi - lo) * r();
+  const procuraMult = (macro.confianca / 100) * macro.crescimento;
+
+  // Preços — ratio × ref
+  let precoRatio = 1.0, tier: "standard" | "fine" | "artisan" = "standard";
+  let marketing = 2500, salario = 1.02, idOrc = 1000;
+  let producaoMult = 1.0;
+  if (perfil === "agressivo_preco") {
+    precoRatio = jitter(0.85, 0.95); tier = "standard";
+    marketing = Math.round(jitter(3000, 4200));
+    salario = jitter(1.00, 1.03); idOrc = Math.round(jitter(500, 1500));
+    producaoMult = jitter(1.05, 1.20);
+  } else if (perfil === "foco_qualidade") {
+    precoRatio = jitter(1.05, 1.20); tier = r() < 0.5 ? "fine" : "standard";
+    marketing = Math.round(jitter(3500, 5000));
+    salario = jitter(1.03, 1.08); idOrc = Math.round(jitter(2500, 4500));
+    producaoMult = jitter(0.85, 1.00);
+  } else {
+    precoRatio = jitter(0.97, 1.05); tier = "standard";
+    marketing = Math.round(jitter(2500, 3500));
+    salario = jitter(1.00, 1.05); idOrc = Math.round(jitter(1000, 2500));
+    producaoMult = jitter(0.95, 1.10);
+  }
+
+  const producao = {
+    cadeira: Math.round(1400 * producaoMult * procuraMult),
+    mesa: Math.round(500 * producaoMult * procuraMult),
+    armario: Math.round(260 * producaoMult * procuraMult),
+  };
+  const preco = {
+    cadeira: Math.round(72 * precoRatio),
+    mesa: Math.round(150 * precoRatio),
+    armario: Math.round(245 * precoRatio),
+  };
+
+  return {
+    CEO: { linhas_saida: [], teto_divida: 200000, dividendos: 0, postura: `IA:${perfil}` },
+    CFO: {
+      markup: 0.25, emprestimo: 0, amortizar: 0, capex: 0,
+      id_orcamento: idOrc, tesouraria: "equilibrado", usar_prejuizos: true, seguro: false,
+    },
+    COO: {
+      producao, tier, comprar_maquinas: 0, ritmo: "normal",
+      subcontratacao: 0, id_modo: "interno",
+    },
+    CMO: {
+      preco, marketing, canal: "direto",
+      forca_vendas: 3, pesquisa_mercado: 0,
+    },
+    CHRO: {
+      salario, formacao: perfil === "foco_qualidade" ? 1500 : 500, bonus: 0,
+      contratar: 0, despedir: 0, promover_supervisor: false, contratar_investigadores: 0,
+    },
+  };
+}
+

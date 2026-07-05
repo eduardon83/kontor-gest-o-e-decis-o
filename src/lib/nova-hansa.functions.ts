@@ -31,11 +31,14 @@ const inputSchema = z.object({
   seed: z.number().int(),
   params: paramsSchema,
   duracao_turnos: z.number().int().min(1).max(40),
+  // 0 = sem prazo automático (só avanço manual pelo professor). Default 168h = 1 semana.
+  duracao_ronda_horas: z.number().min(0).max(24 * 60).default(168),
   modo: z.enum(["so_equipas", "vs_computador", "misto"]),
   n_mercados: z.number().int().min(1).max(8),
   equipas_alunos: z.array(equipaAlunosSchema).min(0).max(24),
   n_ia: z.number().int().min(0).max(12),
 });
+
 
 export type NovaHansaInput = z.infer<typeof inputSchema>;
 
@@ -86,7 +89,7 @@ export const criarHansa = createServerFn({ method: "POST" })
         ambito: data.ambito,
         industria: data.industria,
         seed: data.seed,
-        params: data.params,
+        params: { ...data.params, duracao_ronda_horas: data.duracao_ronda_horas },
         duracao_turnos: data.duracao_turnos,
         instituicao_id: perfil.instituicao_id,
         criado_por: userId,
@@ -189,14 +192,20 @@ export const criarHansa = createServerFn({ method: "POST" })
       if (erroMembros) throw new Error(erroMembros.message);
     }
 
-    // Ronda 1 aberta
+    // Ronda 1 aberta (com ou sem prazo automático).
+    const abreEm = new Date();
+    const prazoEm = data.duracao_ronda_horas > 0
+      ? new Date(abreEm.getTime() + data.duracao_ronda_horas * 3_600_000).toISOString()
+      : null;
     const { error: erroRonda } = await supabase.from("rondas").insert({
       competicao_id: comp.id,
       indice: 1,
       estado: "aberta",
-      abre_em: new Date().toISOString(),
+      abre_em: abreEm.toISOString(),
+      prazo_em: prazoEm,
     });
     if (erroRonda) throw new Error(erroRonda.message);
+
 
     // Fase 5 · chama a Edge Function `gerar_economia` (server-authoritative,
     // service-role) para produzir a economia oculta e os colaboradores a partir da seed.

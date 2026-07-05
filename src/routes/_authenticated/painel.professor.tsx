@@ -89,6 +89,16 @@ function PainelProfessor() {
                   <p className="font-mono text-base text-paper">{c.codigo}</p>
                 </div>
               )}
+              <div className="mt-3">
+                <Link
+                  to="/painel/professor/competicao/$id"
+                  params={{ id: c.id }}
+                  className="inline-block rounded border border-border px-3 py-1 font-mono text-[11px] uppercase tracking-wider hover:border-gold"
+                >
+                  Ver competição →
+                </Link>
+              </div>
+
             </li>
           ))}
         </ul>

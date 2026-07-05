@@ -316,9 +316,7 @@ Deno.serve(async (req) => {
       const export_share = canal === "exportacao" ? 1 : 0;
       const id_orcamento = Math.max(0, Number(dec.CFO?.id_orcamento ?? 0));
 
-      // Apelo (com profile default). Marketing entra depois via profile.apMod
-      // (por agora apMod=1 conforme instrução).
-      const profile = DEFAULT_PROFILE;
+      // Apelo com profile emergente.
       const apelo: Record<Produto, number> = { cadeira: 0, mesa: 0, armario: 0 };
       for (const p of Object.keys(PRODUTOS) as Produto[]) {
         const t = tiers[p];
@@ -348,6 +346,7 @@ Deno.serve(async (req) => {
         empréstimo_novo: emprestimoOk, amortizar, dividendos,
         rdCost, id_modo,
         custoUnit,
+        profile, perfilNome: perfil.nome,
       };
       buffer.push(item);
       const arr = apeloPorMercado.get(eq.mercado_id) ?? [];

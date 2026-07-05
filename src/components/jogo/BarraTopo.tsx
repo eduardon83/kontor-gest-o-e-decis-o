@@ -1,10 +1,11 @@
-import { Settings } from "lucide-react";
+import { Settings, BarChart3 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useJogo } from "./JogoContext";
 import { Livre } from "./Livre";
 import { LUGARES, type Acesso } from "@/lib/jogo/tipos";
+
 
 function fmtPrazo(iso: string | null): string {
   if (!iso) return "—";

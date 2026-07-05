@@ -390,7 +390,7 @@ Deno.serve(async (req) => {
         qualMult, prodMult, scale, eventCapMult,
         marketing, forca_vendas,
         export_share,
-        capex, formacao, bonus,
+        capex, comprarMaquinas, formacao, bonus,
         wageRatio, salarios,
         empréstimo_novo: emprestimoOk, amortizar, dividendos,
         rdCost, id_modo,

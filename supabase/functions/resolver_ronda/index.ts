@@ -519,7 +519,7 @@ Deno.serve(async (req) => {
       const net = pre - imposto;
 
       const equity = 0; // sem entradas de capital neste turno
-      const comprarMaquinas = Math.floor(Number(b.dec.COO?.comprar_maquinas ?? 0));
+      const comprarMaquinas = b.comprarMaquinas;
       const caixaNova = b.estado.caixa + net
         - comprarMaquinas * 60000
         + b.empréstimo_novo - b.amortizar

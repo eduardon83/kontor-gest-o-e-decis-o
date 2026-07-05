@@ -463,21 +463,24 @@ export type Database = {
       membros_equipa: {
         Row: {
           criado_em: string
+          email_convite: string | null
           equipa_id: string
           lugar: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           criado_em?: string
+          email_convite?: string | null
           equipa_id: string
           lugar: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           criado_em?: string
+          email_convite?: string | null
           equipa_id?: string
           lugar?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -646,6 +649,7 @@ export type Database = {
         Args: { _competicao: string }
         Returns: boolean
       }
+      reclamar_convites_por_email: { Args: never; Returns: number }
       ronda_esta_aberta: { Args: { _ronda: string }; Returns: boolean }
       tem_papel: {
         Args: { _papel: Database["public"]["Enums"]["papel_utilizador"] }

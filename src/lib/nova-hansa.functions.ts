@@ -142,8 +142,9 @@ export const criarHansa = createServerFn({ method: "POST" })
       equipasCriadas = eqs;
     }
 
-    // Membros por email — necessita lookup em perfis (RLS impede o professor de ler perfis alheios).
-    // Usa cliente admin para resolver user_ids a partir de emails.
+    // Membros por email — usa cliente admin para resolver user_ids já existentes; para os
+    // restantes emails guarda um convite com `email_convite` (o utilizador liga a si próprio
+    // ao entrar por código com o email correspondente).
     const emailsParaResolver = new Set<string>();
     for (const eq of equipasAlunosMeta) {
       for (const m of eq.membros) {
@@ -166,22 +167,20 @@ export const criarHansa = createServerFn({ method: "POST" })
       for (const e of emails) if (!mapaEmailUser.has(e)) emailsPendentes.push(e);
     }
 
-    // Cria membros_equipa (só para users existentes; restantes ficam pendentes — entram via código)
-    const membrosPayload: { equipa_id: string; user_id: string; lugar: string }[] = [];
-    // Empareja equipasAlunosMeta com equipasCriadas (mantendo ordem, só as não-IA)
+    const membrosPayload: { equipa_id: string; user_id: string | null; lugar: string; email_convite: string | null }[] = [];
     const equipasAlunosCriadas = equipasCriadas.filter((e) => !e.is_ia);
     equipasAlunosMeta.forEach((meta, idx) => {
       const equipa = equipasAlunosCriadas[idx];
       if (!equipa) return;
       const lugaresUsados = new Set<string>();
       for (const m of meta.membros) {
-        if (!m.email) continue;
-        const uid = mapaEmailUser.get(m.email.trim().toLowerCase());
-        if (!uid) continue;
+        const email = m.email?.trim().toLowerCase() || null;
+        if (!email) continue;
         const chave = `${equipa.id}:${m.lugar}`;
         if (lugaresUsados.has(chave)) continue;
         lugaresUsados.add(chave);
-        membrosPayload.push({ equipa_id: equipa.id, user_id: uid, lugar: m.lugar });
+        const uid = mapaEmailUser.get(email) ?? null;
+        membrosPayload.push({ equipa_id: equipa.id, user_id: uid, lugar: m.lugar, email_convite: email });
       }
     });
 

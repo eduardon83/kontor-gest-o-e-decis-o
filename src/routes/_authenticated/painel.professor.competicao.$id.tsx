@@ -1,12 +1,11 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { PainelShell } from "@/components/painel/PainelShell";
 import { resultadosCompeticao, submissoesRondaAtual, avancarRondaAgora } from "@/lib/competicao.functions";
-import { GraficoEvolucaoValor } from "@/components/competicao/GraficoEvolucaoValor";
-import { TabelaMercado } from "@/components/competicao/TabelaMercado";
-import { DemonstracaoUltimoTurno } from "@/components/competicao/DemonstracaoUltimoTurno";
+import { MercadoBloco } from "@/components/competicao/MercadoBloco";
+
 
 export const Route = createFileRoute("/_authenticated/painel/professor/competicao/$id")({
   component: Pagina,

@@ -419,12 +419,28 @@ Deno.serve(async (req) => {
       const eventosEq: { tipo: string; magnitude?: number }[] = [];
       if (rEq() < pGreve) { eventCapMult *= 0.55; eventosEq.push({ tipo: "greve" }); }
       if (rEq() < pPush) { eventCapMult *= 1.15; eventosEq.push({ tipo: "push_output" }); }
-      if (rEq() < pBreak) { eventosEq.push({ tipo: "breakthrough_ID" }); moralDelta += 5; }
+      let breakthrough = false;
+      if (rEq() < pBreak) { eventosEq.push({ tipo: "breakthrough_ID" }); moralDelta += 5; breakthrough = true; }
       if (rEq() < clamp(0.02 + 0.35 * Math.max(0, (50 - M) / 50) + 0.40 * Math.max(0, 1 - b.wageRatio) + 0.25 * Math.max(0, (S - 70) / 30), 0, 0.6) * 0.5) {
         eventosEq.push({ tipo: "saida_talento" }); skillDelta -= 0.15;
       }
       let burnout = false;
       if (S > 70 && rEq() < 0.4) { burnout = true; eventosEq.push({ tipo: "burnout" }); stressDelta += 10; }
+
+      // Progressão da árvore de I&D.
+      const idNovo: IdEstado = {
+        desbloqueados: [...b.estado.id.desbloqueados],
+        progresso: b.estado.id.progresso + rdProgress,
+      };
+      // Um desbloqueio por turno (o breakthrough força mesmo sem custo cumprido).
+      const prox = proximoElegivel(idNovo);
+      if (prox) {
+        if (breakthrough || idNovo.progresso >= prox.custo) {
+          idNovo.desbloqueados.push(prox.id);
+          idNovo.progresso = Math.max(0, idNovo.progresso - prox.custo);
+          eventosEq.push({ tipo: `ID_desbloqueado:${prox.id}` });
+        }
+      }
 
       // Aplica eventCapMult retroativamente (às vendas — proporção da capacidade).
       if (eventCapMult !== 1) {

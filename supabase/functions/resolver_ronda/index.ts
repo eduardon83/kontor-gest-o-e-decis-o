@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
       equipa_id: string; mercado_id: string; is_ia: boolean; estado: EstadoBase;
       dec: Record<string, Record<string, unknown>>;
       auditoria: { acao: string; payload: Record<string, unknown> }[];
-      aDelta: number; // ajuste a "ambicao_org" (alinhamento) por clamps/anulações
+      aDelta: number;
       ritmo: string; overtime: number;
       tiers: Record<Produto, Tier>;
       producao: Record<Produto, number>;
@@ -168,6 +168,7 @@ Deno.serve(async (req) => {
       empréstimo_novo: number; amortizar: number; dividendos: number;
       rdCost: number; id_modo: string;
       custoUnit: Record<Produto, number>;
+      profile: Profile; perfilNome: string;
     };
 
     const buffer: BufItem[] = [];

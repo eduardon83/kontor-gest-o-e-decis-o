@@ -16,6 +16,10 @@ import { clamp, stream } from "../_shared/prng.ts";
 import {
   CONST, PRECEDENCIA, PRODUTOS, TIERS, type Produto, type Tier,
 } from "../_shared/constants.ts";
+import {
+  ID_INICIAL, ID_NOS, PROFILE_NEUTRO, detetarPerfil, mediaJanela,
+  proximoElegivel, type IdEstado, type JanelaDec, type Profile,
+} from "../_shared/id_arvore.ts";
 
 type Decisao = { lugar: string; payload: Record<string, unknown>; submetido_em: string | null };
 type EstadoBase = {

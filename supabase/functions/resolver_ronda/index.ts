@@ -611,7 +611,9 @@ Deno.serve(async (req) => {
       const ranked = entradas
         .map((e) => ({
           equipa_id: e.equipa_id,
-          valor: (snapshotsInsert.find((s) => s.equipa_id === e.equipa_id) as { snapshot?: { caixa?: number } } | undefined)?.snapshot?.caixa ?? 0,
+          valor: Number(
+            (resultadosInsert.find((r) => r.equipa_id === e.equipa_id) as { valor?: number } | undefined)?.valor ?? 0,
+          ),
         }))
         .sort((a, b) => b.valor - a.valor);
       for (let i = 0; i < ranked.length; i++) {

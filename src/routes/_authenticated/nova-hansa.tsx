@@ -52,6 +52,8 @@ function NovaHansaPage() {
   const [capital, setCapital] = useState(60000);
 
   const [duracao, setDuracao] = useState(12);
+  const [duracaoRondaHoras, setDuracaoRondaHoras] = useState(168); // 1 semana; 0 = manual
+
 
   const [modo, setModo] = useState<NovaHansaInput["modo"]>("so_equipas");
   const [nMercados, setNMercados] = useState(1);

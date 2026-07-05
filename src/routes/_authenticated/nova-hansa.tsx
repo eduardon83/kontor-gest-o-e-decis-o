@@ -210,8 +210,32 @@ function NovaHansaPage() {
               <Campo label="Duração (turnos)" hint="1 a 40 turnos.">
                 <Numero value={duracao} onChange={setDuracao} min={1} max={40} />
               </Campo>
+              <Campo label="Duração de cada ronda" hint="O relógio do servidor avança quando o prazo expira. 0 = só avanço manual pelo professor.">
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { h: 0, r: "Manual" },
+                    { h: 1, r: "1 hora" },
+                    { h: 24, r: "1 dia" },
+                    { h: 72, r: "3 dias" },
+                    { h: 168, r: "1 semana" },
+                  ].map((o) => (
+                    <button
+                      key={o.h}
+                      type="button"
+                      onClick={() => setDuracaoRondaHoras(o.h)}
+                      className={
+                        "rounded-md border px-3 py-1.5 text-sm transition-colors " +
+                        (duracaoRondaHoras === o.h ? "border-gold bg-gold/10" : "border-border hover:border-gold/60")
+                      }
+                    >
+                      {o.r}
+                    </button>
+                  ))}
+                </div>
+              </Campo>
             </section>
           )}
+
 
           {passo === 4 && (
             <section className="mt-8 space-y-6">

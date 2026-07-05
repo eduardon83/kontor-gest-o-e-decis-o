@@ -506,7 +506,7 @@ Deno.serve(async (req) => {
         .reduce((s, p) => s + vendas[p] * b.custoUnit[p], 0);
       const wages = b.salarios; // já com ratio salarial aplicado
       const rent = 1500;
-      const dep = (b.estado.maquinas + Math.floor(Number(b.dec.COO?.comprar_maquinas ?? 0))) * 1000;
+      const dep = (b.estado.maquinas + b.comprarMaquinas) * 1000;
       const fixed = wages + rent + dep + b.formacao + b.marketing
         + b.forca_vendas * 2500 + Number(b.dec.CMO?.pesquisa_mercado ?? 0)
         + b.bonus;

@@ -1,9 +1,18 @@
 // resolver_ronda — pipeline determinístico e server-authoritative.
-// (a) política de ausente  (b) precedência CEO→CFO→COO/CMO/CHRO com clamps
-// (c) multiplicadores org  (d) economia + custos + juros + imposto
-// (e) eventos §7.4          (f) rollup pessoas               (g) gravação
+// Esquema de decisões canónico (payload):
+//   CEO:  { linhas_saida:string[], teto_divida:number, dividendos:number, postura:string }
+//   CFO:  { markup:number, emprestimo:number, amortizar:number, capex:number,
+//           id_orcamento:number, tesouraria:'conservador'|'equilibrado'|'agressivo',
+//           usar_prejuizos:bool, seguro:bool }
+//   COO:  { producao:{cadeira,mesa,armario}, tier, comprar_maquinas:number,
+//           ritmo:'ferias'|'folga'|'normal'|'horas_extra', subcontratacao:number,
+//           id_modo:'interno'|'licenca' }
+//   CMO:  { preco:{cadeira,mesa,armario}, marketing:number,
+//           canal:'grosso'|'direto'|'exportacao', forca_vendas:number, pesquisa_mercado:number }
+//   CHRO: { salario:number, formacao:number, bonus:number, contratar:number,
+//           despedir:number, promover_supervisor:bool, contratar_investigadores:number }
 import { admin, corsHeaders, json } from "../_shared/supabase.ts";
-import { clamp, pick, stream } from "../_shared/prng.ts";
+import { clamp, stream } from "../_shared/prng.ts";
 import {
   CONST, PRECEDENCIA, PRODUTOS, TIERS, type Produto, type Tier,
 } from "../_shared/constants.ts";
@@ -12,16 +21,23 @@ type Decisao = { lugar: string; payload: Record<string, unknown>; submetido_em: 
 type EstadoBase = {
   caixa: number; ativos: number; marca: number; divida: number;
   moral: number; stress_org: number; ambicao_org: number;
-  cap_producao: number; forca_vendas: number; supervisores: number;
+  maquinas: number; forca_vendas: number;
+  trabalhadores: number; supervisores: number; investigadores: number;
   prejuizos_acum: number; historia: string[];
 };
 
 const DEFAULT_ESTADO = (capital: number): EstadoBase => ({
   caixa: capital, ativos: 1, marca: 40, divida: 0,
   moral: 65, stress_org: 30, ambicao_org: 55,
-  cap_producao: 1200, forca_vendas: 3, supervisores: 2,
+  maquinas: 6, forca_vendas: 3,
+  trabalhadores: 8, supervisores: 1, investigadores: 0,
   prejuizos_acum: 0, historia: [],
 });
+
+// Horas-máquina por unidade produzida.
+const MACH_H: Record<Produto, number> = { cadeira: 1, mesa: 2.5, armario: 4 };
+
+const DEFAULT_PROFILE = { apMod: 1, greveMod: 1, pushMod: 1, rdMod: 1, qMod: 1 };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -30,7 +46,6 @@ Deno.serve(async (req) => {
     if (!ronda_id) throw new Error("ronda_id em falta");
     const sb = admin();
 
-    // Ronda + competição + economia oculta
     const { data: ronda, error: eR } = await sb.from("rondas")
       .select("id, competicao_id, indice, estado").eq("id", ronda_id).maybeSingle();
     if (eR || !ronda) throw new Error("ronda não encontrada");
@@ -54,7 +69,6 @@ Deno.serve(async (req) => {
     const macro = economia.macro[Math.min(ronda.indice - 1, economia.macro.length - 1)];
     const ELAST = economia.elast ?? CONST.elast_default;
 
-    // Mercados + equipas + decisões + colaboradores + estado prévio
     const { data: mercados } = await sb.from("mercados").select("id").eq("competicao_id", ronda.competicao_id);
     const mercadoIds = (mercados ?? []).map((m) => m.id);
     const { data: equipas } = await sb.from("equipas")
@@ -79,118 +93,174 @@ Deno.serve(async (req) => {
       colabsPorEquipa.set(c.equipa_id, arr);
     }
 
-    // Estado prévio (última snapshot desta equipa)
     async function estadoPrevio(equipa_id: string): Promise<EstadoBase> {
       const { data } = await sb.from("estado_empresa")
         .select("snapshot, criado_em").eq("equipa_id", equipa_id)
         .order("criado_em", { ascending: false }).limit(1).maybeSingle();
+      const base = DEFAULT_ESTADO(economia!.capital_inicial);
       if (data?.snapshot && typeof data.snapshot === "object") {
-        const snap = data.snapshot as Partial<EstadoBase>;
-        return { ...DEFAULT_ESTADO(economia.capital_inicial), ...snap };
+        return { ...base, ...(data.snapshot as Partial<EstadoBase>) };
       }
-      return DEFAULT_ESTADO(economia.capital_inicial);
+      // Deriva contagem de trabalhadores/supervisores da tabela colaboradores.
+      const meta = colabsPorEquipa.get(equipa_id) ?? [];
+      base.trabalhadores = meta.filter((c) => c.papel_org === "trabalhador").length || base.trabalhadores;
+      base.supervisores = meta.filter((c) => c.papel_org === "supervisor").length || base.supervisores;
+      base.investigadores = meta.filter((c) => c.papel_org === "investigador").length;
+      return base;
     }
 
-    // Pré-carrega apelo total do mercado (para calcular quotas).
-    const apeloPorMercado = new Map<string, { equipa_id: string; apelo: Record<Produto, number>; producao: Record<Produto, number>; precos: Record<Produto, number>; export_share: number }[]>();
-    const buffer: {
-      equipa_id: string; mercado_id: string; is_ia: boolean;
-      estado: EstadoBase;
-      decisoesOrig: Decisao[]; decisoesFinais: Decisao[];
+    type BufItem = {
+      equipa_id: string; mercado_id: string; is_ia: boolean; estado: EstadoBase;
+      dec: Record<string, Record<string, unknown>>;
       auditoria: { acao: string; payload: Record<string, unknown> }[];
-      producao: Record<Produto, number>; qualMult: number; prodMult: number;
-      tiers: Record<Produto, Tier>; precos: Record<Produto, number>;
+      aDelta: number; // ajuste a "ambicao_org" (alinhamento) por clamps/anulações
+      ritmo: string; overtime: number;
+      tiers: Record<Produto, Tier>;
+      producao: Record<Produto, number>;
+      precos: Record<Produto, number>;
       apelo: Record<Produto, number>;
-      marketing: number; forca_vendas: number; ritmo: string;
-      custos: { producao: number; estrutura: number; ID: number; juros: number };
+      qualMult: number; prodMult: number;
+      scale: number; eventCapMult: number;
+      marketing: number; forca_vendas: number;
       export_share: number;
-      capex: number; formacao: number; salarios: number;
-      empréstimo_novo: number;
-    }[] = [];
+      capex: number; formacao: number; bonus: number;
+      wageRatio: number; salarios: number;
+      empréstimo_novo: number; amortizar: number; dividendos: number;
+      rdCost: number; id_modo: string;
+      custoUnit: Record<Produto, number>;
+    };
+
+    const buffer: BufItem[] = [];
+    const apeloPorMercado = new Map<string, BufItem[]>();
 
     for (const eq of equipasArr) {
       const estado = await estadoPrevio(eq.id);
       const decisoesEq = decisoesPorEquipa.get(eq.id) ?? [];
-      const { decisoesFinais, auditoria } = aplicarPoliticaEPrecedencia(
-        decisoesEq, comp.politica_ausente ?? "status_quo", estado,
+      const { decisoesFinais, auditoria, aDelta } = aplicarPoliticaEPrecedencia(
+        decisoesEq, comp.politica_ausente ?? "status_quo",
       );
+      const dec = consolidar(decisoesFinais);
+
+      // Regra CEO: linhas de saída → anula produção COO desse produto.
+      const linhasSaida = Array.isArray(dec.CEO?.linhas_saida) ? (dec.CEO!.linhas_saida as string[]) : [];
+      const coo = (dec.COO ?? {}) as Record<string, unknown>;
+      const producaoDec = { ...(coo.producao as Record<string, number> | undefined) } ?? {};
+      for (const p of linhasSaida) {
+        if (Number(producaoDec[p] ?? 0) > 0) {
+          auditoria.push({ acao: "producao_anulada_saida", payload: { produto: p, tinha: producaoDec[p] } });
+          producaoDec[p] = 0;
+        }
+      }
+
       const meta = colabsPorEquipa.get(eq.id) ?? [];
       const rollup = rollupPessoas(meta);
+      const trabalhadores = estado.trabalhadores;
+      const supervisores = estado.supervisores;
+      const investigadores = estado.investigadores;
+
+      // Multiplicadores organizacionais.
+      const coordPen = Math.max(0, (trabalhadores - supervisores * 8)) * 0.01;
       const prodMult = clamp(
         1 + 0.30 * ((rollup.M - 50) / 50)
-          - 0.25 * Math.max(0, rollup.S - 40) / 60
+          - 0.25 * (Math.max(0, rollup.S - 40) / 60)
           + 0.10 * ((rollup.A - 50) / 50)
-          - Math.max(0, rollup.trab - rollup.superv * 8) * 0.01,
+          - coordPen,
         0.5, 1.4,
       );
+      const skill = rollup.competencia_norm; // já normalizado ~1
       const qualMult = clamp(
-        1 + 0.20 * (rollup.competencia_norm - 1) + 0.10 * ((rollup.M - 50) / 50),
+        1 + 0.20 * (skill - 1) + 0.10 * ((rollup.M - 50) / 50),
         0.7, 1.35,
       );
+      const wageRatio = Number(dec.CHRO?.salario ?? 1.0);
+      const attrition = clamp(
+        0.02 + 0.35 * Math.max(0, (50 - rollup.M) / 50)
+          + 0.40 * Math.max(0, 1 - wageRatio)
+          + 0.25 * Math.max(0, (rollup.S - 70) / 30),
+        0, 0.6,
+      );
 
-      // Decisões consolidadas por lugar
-      const dec = consolidar(decisoesFinais);
-      const ritmo = String(dec.COO?.ritmo ?? "normal");
-      const capMod = ritmo === "folga" ? 0.7 : ritmo === "horas_extra" ? 1.15 : ritmo === "ferias" ? 0.05 : 1.0;
-      const cap = estado.cap_producao * capMod * prodMult;
+      // Decisões COO.
+      const ritmo = String((coo.ritmo as string) ?? "normal");
+      const overtime = ritmo === "horas_extra" ? 40 : 0;
+      const tierUnico = (coo.tier as Tier) ?? "standard";
+      const tiers: Record<Produto, Tier> = { cadeira: tierUnico, mesa: tierUnico, armario: tierUnico };
+      const subcontratacao = clamp(Number(coo.subcontratacao ?? 0), 0, 1);
+      const comprarMaquinas = Math.max(0, Math.floor(Number(coo.comprar_maquinas ?? 0)));
+      const id_modo = String(coo.id_modo ?? "interno");
 
-      // Produção alvo por produto/tier
-      const tiers: Record<Produto, Tier> = {
-        cadeira: (dec.COO?.tier_cadeira as Tier) ?? "standard",
-        mesa: (dec.COO?.tier_mesa as Tier) ?? "standard",
-        armario: (dec.COO?.tier_armario as Tier) ?? "standard",
-      };
       const alvo: Record<Produto, number> = {
-        cadeira: Number(dec.COO?.prod_cadeira ?? 0),
-        mesa: Number(dec.COO?.prod_mesa ?? 0),
-        armario: Number(dec.COO?.prod_armario ?? 0),
-      };
-      const custoUnitario = (p: Produto, t: Tier) =>
-        PRODUTOS[p].madeira * CONST.madeira_m3
-        + PRODUTOS[p].mao * TIERS[t].mao_mult * CONST.custo_hora * (ritmo === "horas_extra" ? 1.5 : 1)
-        + PRODUTOS[p].energia * (CONST.eletricidade_kwh + CONST.carbono_kwh)
-        + PRODUTOS[p].consumivel;
-
-      const custoAlvo = (Object.keys(PRODUTOS) as Produto[])
-        .reduce((s, p) => s + alvo[p] * custoUnitario(p, tiers[p]), 0);
-
-      // Capex reduz orçamento
-      const orcamento = Math.max(0, estado.caixa - custoAlvo);
-      let capex = Math.min(Number(dec.CFO?.capex ?? 0), orcamento);
-      if (capex < Number(dec.CFO?.capex ?? 0)) {
-        auditoria.push({ acao: "capex_reduzido_ao_orcamento", payload: { pedido: dec.CFO?.capex, aplicado: capex } });
-      }
-      const emprestimo_teto = 0.6 * estado.cap_producao * 50; // heurístico
-      let emprestimo_novo = Number(dec.CFO?.emprestimo ?? 0);
-      if (emprestimo_novo > emprestimo_teto) {
-        auditoria.push({ acao: "emprestimo_clampado", payload: { pedido: emprestimo_novo, teto: emprestimo_teto } });
-        emprestimo_novo = emprestimo_teto;
-      }
-
-      // Produção limitada pela capacidade e recursos (aproximada)
-      const somaAlvo = alvo.cadeira + alvo.mesa + alvo.armario;
-      const factorCap = somaAlvo > 0 ? Math.min(1, cap / Math.max(1, somaAlvo)) : 0;
-      const producao: Record<Produto, number> = {
-        cadeira: Math.floor(alvo.cadeira * factorCap),
-        mesa: Math.floor(alvo.mesa * factorCap),
-        armario: Math.floor(alvo.armario * factorCap),
+        cadeira: Math.max(0, Number(producaoDec.cadeira ?? 0)),
+        mesa: Math.max(0, Number(producaoDec.mesa ?? 0)),
+        armario: Math.max(0, Number(producaoDec.armario ?? 0)),
       };
 
-      // Piso de preço = custo unitário × 1.05
-      const precos: Record<Produto, number> = {
-        cadeira: 0, mesa: 0, armario: 0,
-      };
+      // Custo unitário por produto (COGS + horas extra + subcontratação).
+      const lw = CONST.custo_hora;
+      const custoUnit: Record<Produto, number> = { cadeira: 0, mesa: 0, armario: 0 };
       for (const p of Object.keys(PRODUTOS) as Produto[]) {
-        const piso = custoUnitario(p, tiers[p]) * 1.05;
-        const pedido = Number((dec.CMO as Record<string, number> | undefined)?.[`preco_${p}`] ?? PRODUTOS[p].ref);
+        const t = tiers[p];
+        const base = PRODUTOS[p].madeira * CONST.madeira_m3
+          + PRODUTOS[p].mao * TIERS[t].mao_mult * lw
+          + PRODUTOS[p].energia * (CONST.eletricidade_kwh + CONST.carbono_kwh)
+          + PRODUTOS[p].consumivel;
+        custoUnit[p] = base
+          * (1 + (ritmo === "horas_extra" ? 0.25 * (overtime / 40) : 0))
+          * (1 + subcontratacao * 0.18);
+      }
+
+      // Capacidade.
+      const capLabour = (trabalhadores * 160 + overtime * trabalhadores) * prodMult;
+      const capMachine = (estado.maquinas + comprarMaquinas) * 450 * prodMult;
+      const labNeed = (Object.keys(PRODUTOS) as Produto[])
+        .reduce((s, p) => s + alvo[p] * PRODUTOS[p].mao * TIERS[tiers[p]].mao_mult, 0);
+      const machNeed = (Object.keys(PRODUTOS) as Produto[])
+        .reduce((s, p) => s + alvo[p] * MACH_H[p], 0);
+      let scale = Math.min(1,
+        labNeed > 0 ? capLabour / labNeed : 1,
+        machNeed > 0 ? capMachine / machNeed : 1);
+      if (scale < 1 && subcontratacao > 0) scale = Math.min(1, scale + subcontratacao);
+      // eventCapMult é aplicado depois; aqui inicializamos a 1.
+      const eventCapMult = 1;
+      scale = scale * eventCapMult;
+
+      const producao: Record<Produto, number> = {
+        cadeira: Math.floor(alvo.cadeira * scale),
+        mesa: Math.floor(alvo.mesa * scale),
+        armario: Math.floor(alvo.armario * scale),
+      };
+
+      // Preços (piso = custo × 1.05 já é implícito no markup; validamos anti-abuso).
+      const precoDec = (dec.CMO?.preco as Record<string, number> | undefined) ?? {};
+      const precos: Record<Produto, number> = { cadeira: 0, mesa: 0, armario: 0 };
+      for (const p of Object.keys(PRODUTOS) as Produto[]) {
+        const piso = custoUnit[p] * 1.05;
+        const pedido = Number(precoDec[p] ?? PRODUTOS[p].ref);
         precos[p] = Math.max(piso, pedido);
         if (pedido < piso) auditoria.push({ acao: "preco_subido_ao_piso", payload: { produto: p, pedido, piso } });
       }
 
+      // CFO — teto de dívida (imposto pelo CEO).
+      const tetoDivida = Math.max(0, Number(dec.CEO?.teto_divida ?? Infinity));
+      const emprestimoPed = Math.max(0, Number(dec.CFO?.emprestimo ?? 0));
+      const emprestimoOk = Math.max(0, Math.min(emprestimoPed, tetoDivida - estado.divida));
+      if (emprestimoPed > emprestimoOk) {
+        auditoria.push({ acao: "emprestimo_clampado_teto", payload: { pedido: emprestimoPed, aplicado: emprestimoOk, teto: tetoDivida } });
+      }
+      const amortizar = Math.max(0, Math.min(Number(dec.CFO?.amortizar ?? 0), estado.divida + emprestimoOk));
+      const capex = Math.max(0, Number(dec.CFO?.capex ?? 0)); // pago em caixa
+      const dividendos = Math.max(0, Number(dec.CEO?.dividendos ?? 0));
+      const formacao = Math.max(0, Number(dec.CHRO?.formacao ?? 0));
+      const bonus = Math.max(0, Number(dec.CHRO?.bonus ?? 0));
       const marketing = Math.max(0, Number(dec.CMO?.marketing ?? 0));
-      const forca_vendas = estado.forca_vendas;
-      const apMod = 1 + Math.tanh(marketing / 6000) * 0.15;
+      const forca_vendas = Math.max(0, Number(dec.CMO?.forca_vendas ?? estado.forca_vendas));
+      const canal = String(dec.CMO?.canal ?? "direto");
+      const export_share = canal === "exportacao" ? 1 : 0;
+      const id_orcamento = Math.max(0, Number(dec.CFO?.id_orcamento ?? 0));
 
+      // Apelo (com profile default). Marketing entra depois via profile.apMod
+      // (por agora apMod=1 conforme instrução).
+      const profile = DEFAULT_PROFILE;
       const apelo: Record<Produto, number> = { cadeira: 0, mesa: 0, armario: 0 };
       for (const p of Object.keys(PRODUTOS) as Produto[]) {
         const t = tiers[p];
@@ -198,38 +268,39 @@ Deno.serve(async (req) => {
           * Math.sqrt(0.5 + estado.marca / 100)
           * Math.pow(PRODUTOS[p].ref / Math.max(1, precos[p]), ELAST)
           * (1 + 0.04 * forca_vendas)
-          * apMod;
+          * profile.apMod;
       }
 
-      const export_share = clamp(Number(dec.CMO?.export_share ?? 0), 0, 0.5);
-      const formacao = Math.max(0, Number(dec.CHRO?.formacao ?? 0));
-      const ID_gasto = Math.max(0, Number(dec.CEO?.ID ?? 0));
-      const salarios = meta.reduce((s, c) => s + 1600 * c.salario_mult, 0);
+      // Salários e I&D (custos preliminares — usados no P&L abaixo).
+      const salarios = trabalhadores * 160 * lw * wageRatio
+        + supervisores * 160 * lw * 1.4 * wageRatio
+        + investigadores * 160 * lw * 1.6 * wageRatio;
+      const rdCost = (id_modo === "licenca" ? 45000 : id_orcamento)
+        + investigadores * 160 * lw;
 
-      const custoProd = (Object.keys(PRODUTOS) as Produto[])
-        .reduce((s, p) => s + producao[p] * custoUnitario(p, tiers[p]), 0);
-      const estrutura = salarios + 2500 + estado.ativos * 400 + marketing + forca_vendas * 2500 + formacao;
-      const juros = estado.divida * ((macro.juro + 3.6) / 100) / 12;
-
-      buffer.push({
+      const item: BufItem = {
         equipa_id: eq.id, mercado_id: eq.mercado_id, is_ia: eq.is_ia,
-        estado, decisoesOrig: decisoesEq, decisoesFinais, auditoria,
-        producao, qualMult, prodMult, tiers, precos, apelo,
-        marketing, forca_vendas, ritmo,
-        custos: { producao: custoProd, estrutura, ID: ID_gasto, juros },
-        export_share, capex, formacao, salarios,
-        empréstimo_novo: emprestimo_novo,
-      });
-
+        estado, dec, auditoria, aDelta,
+        ritmo, overtime, tiers, producao, precos, apelo,
+        qualMult, prodMult, scale, eventCapMult,
+        marketing, forca_vendas,
+        export_share,
+        capex, formacao, bonus,
+        wageRatio, salarios,
+        empréstimo_novo: emprestimoOk, amortizar, dividendos,
+        rdCost, id_modo,
+        custoUnit,
+      };
+      buffer.push(item);
       const arr = apeloPorMercado.get(eq.mercado_id) ?? [];
-      arr.push({ equipa_id: eq.id, apelo, producao, precos, export_share });
+      arr.push(item);
       apeloPorMercado.set(eq.mercado_id, arr);
     }
 
-    // Economia: procura por linha × quota → vendas por equipa/produto
-    const rEventos = stream(Number(comp.seed) + ronda.indice * 7919, `eventos:${ronda.indice}`);
+    // Procura e quotas por mercado/produto.
     const perfilChoque = (produto: Produto): number => {
       const perf = economia.perfis[produto];
+      if (!perf) return 1;
       const base = perf.nivel * (1 + perf.tendencia * ronda.indice)
         * perf.sazonalidade[(ronda.indice - 1) % 12];
       const choque = perf.choques.filter((c) => c.turno === ronda.indice).reduce((s, c) => s + c.delta, 0);
@@ -240,29 +311,29 @@ Deno.serve(async (req) => {
 
     const vendasPorEquipa = new Map<string, Record<Produto, number>>();
     const receitasPorEquipa = new Map<string, number>();
-    for (const [_mercado_id, entradas] of apeloPorMercado) {
+
+    for (const [_m, entradas] of apeloPorMercado) {
       for (const p of Object.keys(PRODUTOS) as Produto[]) {
         const precoMedio = entradas.reduce((s, e) => s + e.precos[p], 0) / Math.max(1, entradas.length);
-        const perfil = perfilChoque(p);
-        const procura = PRODUTOS[p].procura_base
+        const demand = PRODUTOS[p].procura_base
           * Math.pow(PRODUTOS[p].ref / Math.max(1, precoMedio), 0.4)
           * macro.crescimento
           * (macro.confianca / 100)
-          * perfil;
+          * perfilChoque(p);
         const somaApelo = entradas.reduce((s, e) => s + e.apelo[p], 0) || 1;
         for (const e of entradas) {
           const quota = e.apelo[p] / somaApelo;
-          const vendasBrutas = Math.min(Math.round(procura * quota), e.producao[p]);
+          const sold = Math.min(Math.round(demand * quota), Math.floor(e.producao[p]));
           const cur = vendasPorEquipa.get(e.equipa_id) ?? { cadeira: 0, mesa: 0, armario: 0 };
-          cur[p] = vendasBrutas;
+          cur[p] = sold;
           vendasPorEquipa.set(e.equipa_id, cur);
-          const receita = vendasBrutas * e.precos[p] * (1 - e.export_share + e.export_share * CONST.exportacao_mult);
-          receitasPorEquipa.set(e.equipa_id, (receitasPorEquipa.get(e.equipa_id) ?? 0) + receita);
+          const receitaP = sold * e.precos[p] * (1 - e.export_share + e.export_share * CONST.exportacao_mult);
+          receitasPorEquipa.set(e.equipa_id, (receitasPorEquipa.get(e.equipa_id) ?? 0) + receitaP);
         }
       }
     }
 
-    // Eventos §7.4 + gravação por equipa
+    // Eventos internos + P&L + snapshots.
     const snapshotsInsert: Record<string, unknown>[] = [];
     const eventosInsert: Record<string, unknown>[] = [];
     const resultadosInsert: Record<string, unknown>[] = [];
@@ -271,79 +342,123 @@ Deno.serve(async (req) => {
     for (const b of buffer) {
       const rEq = stream(Number(comp.seed) + ronda.indice * 104729, `equipa:${b.equipa_id}`);
       const vendas = vendasPorEquipa.get(b.equipa_id) ?? { cadeira: 0, mesa: 0, armario: 0 };
-      const receita = receitasPorEquipa.get(b.equipa_id) ?? 0;
+      let receita = receitasPorEquipa.get(b.equipa_id) ?? 0;
+      const profile = DEFAULT_PROFILE;
+      const M = b.estado.moral, S = b.estado.stress_org;
 
-      // Eventos internos
-      let modProd = 1, modStressDelta = 0, modMoralDelta = 0, modCompDelta = 0;
+      // Eventos (§8).
+      const pGreve = clamp(
+        (0.01 + 0.30 * Math.max(0, (50 - M) / 50) + 0.20 * Math.max(0, (S - 60) / 40)
+          + 0.30 * Math.max(0, 1 - b.wageRatio)) * profile.greveMod, 0, 0.75,
+      );
+      const pPush = clamp(
+        ((S < 40 ? 0.05 + 0.25 * Math.max(0, (M - 75) / 25) : 0)) * profile.pushMod, 0, 0.6,
+      );
+      const rdProgress = (b.estado.investigadores * 4 + (Number(b.dec.CFO?.id_orcamento ?? 0)) / 1500)
+        * (0.7 + 0.3 * M / 100) * profile.rdMod;
+      const pBreak = clamp(0.02 + 0.04 * Math.pow(rdProgress / 40, 1.4), 0, 0.6);
+
+      let eventCapMult = 1, moralDelta = 0, stressDelta = 0, skillDelta = 0;
       const eventosEq: { tipo: string; magnitude?: number }[] = [];
-      const tabela = [
-        { tipo: "greve", prob: 0.03 * (b.estado.stress_org > 60 ? 1.5 : 1) },
-        { tipo: "push_output", prob: 0.05 * (b.ritmo === "horas_extra" ? 1.5 : 1) },
-        { tipo: "breakthrough_ID", prob: 0.02 * (b.custos.ID > 3000 ? 2 : 1) },
-        { tipo: "saida_talento", prob: 0.03 * (b.estado.moral < 45 ? 2 : 1) },
-        { tipo: "burnout", prob: 0.04 * (b.estado.stress_org > 70 ? 2 : 1) },
-      ];
-      for (const t of tabela) {
-        if (rEq() < t.prob) {
-          eventosEq.push({ tipo: t.tipo });
-          if (t.tipo === "greve") modProd *= 0.55;
-          if (t.tipo === "push_output") modProd *= 1.15;
-          if (t.tipo === "saida_talento") modCompDelta -= 0.15;
-          if (t.tipo === "burnout") modStressDelta += 12;
-          if (t.tipo === "breakthrough_ID") modMoralDelta += 5;
+      if (rEq() < pGreve) { eventCapMult *= 0.55; eventosEq.push({ tipo: "greve" }); }
+      if (rEq() < pPush) { eventCapMult *= 1.15; eventosEq.push({ tipo: "push_output" }); }
+      if (rEq() < pBreak) { eventosEq.push({ tipo: "breakthrough_ID" }); moralDelta += 5; }
+      if (rEq() < clamp(0.02 + 0.35 * Math.max(0, (50 - M) / 50) + 0.40 * Math.max(0, 1 - b.wageRatio) + 0.25 * Math.max(0, (S - 70) / 30), 0, 0.6) * 0.5) {
+        eventosEq.push({ tipo: "saida_talento" }); skillDelta -= 0.15;
+      }
+      let burnout = false;
+      if (S > 70 && rEq() < 0.4) { burnout = true; eventosEq.push({ tipo: "burnout" }); stressDelta += 10; }
+
+      // Aplica eventCapMult retroativamente (às vendas — proporção da capacidade).
+      if (eventCapMult !== 1) {
+        for (const p of Object.keys(PRODUTOS) as Produto[]) {
+          const novo = Math.floor(vendas[p] * eventCapMult);
+          receita -= vendas[p] * b.precos[p] * (1 - b.export_share + b.export_share * CONST.exportacao_mult);
+          vendas[p] = novo;
+          receita += novo * b.precos[p] * (1 - b.export_share + b.export_share * CONST.exportacao_mult);
         }
       }
-      const receitaFinal = receita * modProd;
 
-      // P&L
-      const preImposto = receitaFinal - b.custos.producao - b.custos.estrutura - b.custos.ID - b.custos.juros;
-      const baseTributavel = Math.max(0, preImposto - b.estado.prejuizos_acum);
+      // P&L (fórmulas §7).
+      const prodCost = (Object.keys(PRODUTOS) as Produto[])
+        .reduce((s, p) => s + vendas[p] * b.custoUnit[p], 0);
+      const wages = b.salarios; // já com ratio salarial aplicado
+      const rent = 1500;
+      const dep = (b.estado.maquinas + Math.floor(Number(b.dec.COO?.comprar_maquinas ?? 0))) * 1000;
+      const fixed = wages + rent + dep + b.formacao + b.marketing
+        + b.forca_vendas * 2500 + Number(b.dec.CMO?.pesquisa_mercado ?? 0)
+        + b.bonus;
+      const juro = macro.juro;
+      const interest = (b.estado.divida + b.empréstimo_novo) * ((juro + 3.6) / 100) / 12;
+      const pre = receita - prodCost - fixed - b.rdCost - interest;
+      const usarPrejuizos = Boolean(b.dec.CFO?.usar_prejuizos);
+      const baseTributavel = usarPrejuizos ? Math.max(0, pre - b.estado.prejuizos_acum) : Math.max(0, pre);
       const imposto = baseTributavel * CONST.imposto;
-      const resultado = preImposto - imposto;
+      const net = pre - imposto;
 
-      // Rollup pessoas → atualiza fatores
-      const rollup = rollupPessoas(colabsPorEquipa.get(b.equipa_id) ?? []);
-      const novoStress = clamp(b.estado.stress_org
-        + (b.ritmo === "horas_extra" ? 6 : b.ritmo === "folga" ? -8 : 0)
-        + modStressDelta - Math.min(6, b.formacao / 800), 0, 100);
-      const novoMoral = clamp(b.estado.moral
-        + (b.ritmo === "ferias" ? 5 : 0)
-        + Math.min(8, b.formacao / 600)
-        + (resultado > 0 ? 2 : -2) + modMoralDelta, 0, 100);
-      const novaCompetencia = clamp(rollup.competencia_norm + modCompDelta, 0.5, 1.5);
+      const equity = 0; // sem entradas de capital neste turno
+      const comprarMaquinas = Math.floor(Number(b.dec.COO?.comprar_maquinas ?? 0));
+      const caixaNova = b.estado.caixa + net
+        - comprarMaquinas * 60000
+        + b.empréstimo_novo - b.amortizar
+        + equity - b.dividendos;
 
-      const capitalNovo = b.estado.caixa + receitaFinal - b.custos.producao - b.custos.estrutura
-        - b.custos.ID - b.custos.juros - imposto - b.capex + b.empréstimo_novo;
-      const dividaNova = b.estado.divida + b.empréstimo_novo;
-      const ativosNovo = b.estado.ativos + b.capex / 10000;
+      const dividaNova = b.estado.divida + b.empréstimo_novo - b.amortizar;
+      const ativosNovo = b.estado.ativos + comprarMaquinas * 0.5;
       const marcaNovo = clamp(b.estado.marca + Math.min(8, b.marketing / 3000) - 1, 0, 100);
-      const prejuizosNovo = preImposto < 0 ? b.estado.prejuizos_acum + Math.abs(preImposto) - imposto
-        : Math.max(0, b.estado.prejuizos_acum - baseTributavel);
-      const capNovo = b.estado.cap_producao + b.capex / 40;
+      const prejuizosNovo = pre < 0
+        ? b.estado.prejuizos_acum + Math.abs(pre)
+        : (usarPrejuizos ? Math.max(0, b.estado.prejuizos_acum - baseTributavel) : b.estado.prejuizos_acum);
 
-      const snapshot = {
-        turno: ronda.indice,
-        caixa: capitalNovo, ativos: ativosNovo, marca: marcaNovo, divida: dividaNova,
-        moral: novoMoral, stress_org: novoStress, ambicao_org: rollup.A,
-        cap_producao: capNovo, forca_vendas: b.forca_vendas, supervisores: b.estado.supervisores,
-        prejuizos_acum: prejuizosNovo,
-        vendas, receita: receitaFinal, custos: b.custos, imposto, resultado,
-        precos: b.precos, tiers: b.tiers, ritmo: b.ritmo,
-        prodMult: b.prodMult, qualMult: b.qualMult, competencia_norm: novaCompetencia,
-        macro,
-        notas: b.auditoria,
+      // Atualização de fatores (§9).
+      const dM = ((b.wageRatio >= 1.10 ? 6 : b.wageRatio >= 1.0 ? 1 : -8)
+        + (b.ritmo === "horas_extra" ? -4 : 0)
+        + (b.formacao > 0 ? 3 : 0)
+        + (b.bonus > 0 ? 4 : 0)
+        + (b.dec.CHRO?.promover_supervisor ? 5 : 0)
+        + moralDelta
+        + (b.ritmo === "ferias" ? 5 : 0));
+      const dS = ((b.ritmo === "horas_extra" ? 10 : -6)
+        + (burnout ? 10 : 0)
+        + (b.ritmo === "folga" ? -6 : 0)
+        + (b.ritmo === "ferias" ? -20 : 0)
+        + stressDelta);
+      const dA = b.aDelta;
+
+      const Mn = clamp(b.estado.moral + dM, 0, 100);
+      const Sn = clamp(b.estado.stress_org + dS, 0, 100);
+      const An = clamp(b.estado.ambicao_org + dA, 0, 100);
+
+      // Contratações/despedimentos e promoções (aplicados ao snapshot).
+      const contratar = Math.max(0, Math.floor(Number(b.dec.CHRO?.contratar ?? 0)));
+      const despedir = Math.max(0, Math.floor(Number(b.dec.CHRO?.despedir ?? 0)));
+      const promoverSup = Boolean(b.dec.CHRO?.promover_supervisor);
+      const contratarInvest = Math.max(0, Math.floor(Number(b.dec.CHRO?.contratar_investigadores ?? 0)));
+      const trabalhadoresNovo = Math.max(0, b.estado.trabalhadores + contratar - despedir - (promoverSup ? 1 : 0));
+      const supervisoresNovo = b.estado.supervisores + (promoverSup ? 1 : 0);
+      const investigadoresNovo = b.estado.investigadores + contratarInvest;
+
+      const snapshot: EstadoBase & Record<string, unknown> = {
+        caixa: caixaNova, ativos: ativosNovo, marca: marcaNovo, divida: dividaNova,
+        moral: Mn, stress_org: Sn, ambicao_org: An,
+        maquinas: b.estado.maquinas + comprarMaquinas,
+        forca_vendas: b.forca_vendas,
+        trabalhadores: trabalhadoresNovo, supervisores: supervisoresNovo, investigadores: investigadoresNovo,
+        prejuizos_acum: prejuizosNovo, historia: [...b.estado.historia, `turno ${ronda.indice}`],
+        turno: ronda.indice, vendas, receita, prodCost, fixed, interest, imposto, resultado: net,
+        precos: b.precos, tiers: b.tiers, ritmo: b.ritmo, wageRatio: b.wageRatio,
+        prodMult: b.prodMult, qualMult: b.qualMult,
+        macro, notas: b.auditoria,
       };
       snapshotsInsert.push({ equipa_id: b.equipa_id, ronda_id: ronda.id, snapshot });
 
       for (const ev of eventosEq) {
         eventosInsert.push({
           equipa_id: b.equipa_id, ronda_id: ronda.id, tipo: ev.tipo,
-          efeito: {}, payload: { magnitude: ev.magnitude ?? 1 }, timing: "resolucao",
+          efeito: {}, payload: {}, timing: "resolucao",
         });
       }
-      // Valor "share-value"
-      const valor = Math.max(0, capitalNovo)
-        + ativosNovo * 30000 + marcaNovo * 1500 - dividaNova + Math.max(0, resultado) * 2;
+      const valor = Math.max(0, caixaNova) + ativosNovo * 30000 + marcaNovo * 1500 - dividaNova + Math.max(0, net) * 2;
       resultadosInsert.push({ equipa_id: b.equipa_id, ronda_id: ronda.id, valor });
 
       for (const a of b.auditoria) {
@@ -359,10 +474,13 @@ Deno.serve(async (req) => {
     if (resultadosInsert.length) await sb.from("resultados").insert(resultadosInsert);
     if (auditoriaInsert.length) await sb.from("log_auditoria").insert(auditoriaInsert);
 
-    // Posicoes por mercado
+    // Posições por mercado.
     for (const [_mid, entradas] of apeloPorMercado) {
       const ranked = entradas
-        .map((e) => ({ equipa_id: e.equipa_id, valor: (snapshotsInsert.find((s) => s.equipa_id === e.equipa_id) as { snapshot?: { caixa?: number } } | undefined)?.snapshot?.caixa ?? 0 }))
+        .map((e) => ({
+          equipa_id: e.equipa_id,
+          valor: (snapshotsInsert.find((s) => s.equipa_id === e.equipa_id) as { snapshot?: { caixa?: number } } | undefined)?.snapshot?.caixa ?? 0,
+        }))
         .sort((a, b) => b.valor - a.valor);
       for (let i = 0; i < ranked.length; i++) {
         await sb.from("resultados").update({ posicao: i + 1 })
@@ -370,7 +488,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Fecha esta ronda e abre a seguinte (se não for a última).
     await sb.from("rondas").update({ estado: "resolvida" }).eq("id", ronda.id);
     if (ronda.indice < comp.duracao_turnos) {
       await sb.from("rondas").insert({
@@ -393,37 +510,26 @@ Deno.serve(async (req) => {
 function aplicarPoliticaEPrecedencia(
   decisoes: Decisao[],
   politica: string,
-  _estado: EstadoBase,
-): { decisoesFinais: Decisao[]; auditoria: { acao: string; payload: Record<string, unknown> }[] } {
+): { decisoesFinais: Decisao[]; auditoria: { acao: string; payload: Record<string, unknown> }[]; aDelta: number } {
   const porLugar = new Map<string, Decisao>();
   for (const d of decisoes) porLugar.set(d.lugar, d);
   const auditoria: { acao: string; payload: Record<string, unknown> }[] = [];
   const decisoesFinais: Decisao[] = [];
+  let aDelta = 2; // +2 base por turno
   for (const lugar of PRECEDENCIA) {
     const d = porLugar.get(lugar);
     if (d && d.submetido_em) {
       decisoesFinais.push(d);
     } else {
       auditoria.push({ acao: "ausente_aplicado", payload: { lugar, politica } });
+      aDelta -= 3;
       decisoesFinais.push({
-        lugar,
-        submetido_em: null,
+        lugar, submetido_em: null,
         payload: politica === "pior_caso" ? { pior_caso: true } : { status_quo: true },
       });
     }
   }
-  // Regra: linha em saída → produção anulada (COO)
-  const cmo = porLugar.get("CMO")?.payload ?? {};
-  const coo = porLugar.get("COO")?.payload as Record<string, unknown> | undefined;
-  if (coo) {
-    for (const p of ["cadeira", "mesa", "armario"]) {
-      if ((cmo as Record<string, unknown>)[`descontinuar_${p}`] && Number(coo[`prod_${p}`] ?? 0) > 0) {
-        auditoria.push({ acao: "producao_anulada_saida", payload: { produto: p, tinha: coo[`prod_${p}`] } });
-        coo[`prod_${p}`] = 0;
-      }
-    }
-  }
-  return { decisoesFinais, auditoria };
+  return { decisoesFinais, auditoria, aDelta };
 }
 
 function consolidar(decs: Decisao[]): Record<string, Record<string, unknown>> {
@@ -432,20 +538,18 @@ function consolidar(decs: Decisao[]): Record<string, Record<string, unknown>> {
   return out;
 }
 
-function rollupPessoas(colabs: { motivacao: number; stress_individual: number; competencia: number; produtividade_base: number; necessidades: unknown; aptidao_gestao: number }[]) {
+function rollupPessoas(colabs: { motivacao: number; stress_individual: number; competencia: number; produtividade_base: number; necessidades: unknown; aptidao_gestao: number; papel_org?: string }[]) {
   if (!colabs.length) {
     return { M: 60, S: 40, A: 55, competencia_norm: 1, prodBase_media: 60, trab: 0, superv: 0 };
   }
-  const media = (f: (c: typeof colabs[number]) => number) => colabs.reduce((s, c) => s + f(c), 0) / colabs.length;
+  const media = (f: (c: typeof colabs[number]) => number) =>
+    colabs.reduce((s, c) => s + f(c), 0) / colabs.length;
   const M = media((c) => c.motivacao);
   const S = media((c) => c.stress_individual);
   const A = media((c) => ((c.necessidades as { ambicao?: number } | null)?.ambicao ?? 55));
   const competencia_media = media((c) => c.competencia);
   const prodBase_media = media((c) => c.produtividade_base);
-  const superv = colabs.filter((c) => c.aptidao_gestao >= 60).length;
-  const trab = colabs.length - superv;
+  const superv = colabs.filter((c) => c.papel_org === "supervisor").length;
+  const trab = colabs.filter((c) => c.papel_org === "trabalhador").length;
   return { M, S, A, competencia_norm: competencia_media / 60, prodBase_media, trab, superv };
 }
-
-// pick usado apenas para simetria de imports.
-void pick;

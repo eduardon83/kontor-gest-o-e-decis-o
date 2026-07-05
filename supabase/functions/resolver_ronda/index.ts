@@ -28,6 +28,7 @@ type EstadoBase = {
   maquinas: number; forca_vendas: number;
   trabalhadores: number; supervisores: number; investigadores: number;
   prejuizos_acum: number; historia: string[];
+  id: IdEstado;
 };
 
 const DEFAULT_ESTADO = (capital: number): EstadoBase => ({
@@ -36,12 +37,11 @@ const DEFAULT_ESTADO = (capital: number): EstadoBase => ({
   maquinas: 6, forca_vendas: 3,
   trabalhadores: 8, supervisores: 1, investigadores: 0,
   prejuizos_acum: 0, historia: [],
+  id: { ...ID_INICIAL },
 });
 
 // Horas-máquina por unidade produzida.
 const MACH_H: Record<Produto, number> = { cadeira: 1, mesa: 2.5, armario: 4 };
-
-const DEFAULT_PROFILE = { apMod: 1, greveMod: 1, pushMod: 1, rdMod: 1, qMod: 1 };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });

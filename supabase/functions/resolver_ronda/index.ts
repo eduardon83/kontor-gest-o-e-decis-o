@@ -209,8 +209,13 @@ Deno.serve(async (req) => {
         0.5, 1.4,
       );
       const skill = rollup.competencia_norm; // já normalizado ~1
+
+      // Perfil emergente (janela últimos ≤3 turnos, incluindo o atual).
+      const perfil = await janelaDec(eq.id, dec);
+      const profile: Profile = { apMod: perfil.apMod, greveMod: perfil.greveMod, pushMod: perfil.pushMod, rdMod: perfil.rdMod, qMod: perfil.qMod };
+
       const qualMult = clamp(
-        1 + 0.20 * (skill - 1) + 0.10 * ((rollup.M - 50) / 50),
+        (1 + 0.20 * (skill - 1) + 0.10 * ((rollup.M - 50) / 50)) * profile.qMod,
         0.7, 1.35,
       );
       const wageRatio = Number(dec.CHRO?.salario ?? 1.0);
@@ -221,11 +226,20 @@ Deno.serve(async (req) => {
         0, 0.6,
       );
 
-      // Decisões COO.
+      // Decisões COO — validação de tier vs. árvore de I&D.
       const ritmo = String((coo.ritmo as string) ?? "normal");
       const overtime = ritmo === "horas_extra" ? 40 : 0;
-      const tierUnico = (coo.tier as Tier) ?? "standard";
-      const tiers: Record<Produto, Tier> = { cadeira: tierUnico, mesa: tierUnico, armario: tierUnico };
+      const tierPedido = (coo.tier as Tier) ?? "standard";
+      const idDesbl = new Set(estado.id.desbloqueados);
+      let tierEfetivo: Tier = tierPedido;
+      if (tierPedido === "fine" && !idDesbl.has("FINE")) {
+        tierEfetivo = "standard";
+        auditoria.push({ acao: "tier_reduzido_sem_ID", payload: { pedido: "fine", aplicado: "standard", falta: "FINE" } });
+      } else if (tierPedido === "artisan" && !idDesbl.has("ARTISAN")) {
+        tierEfetivo = idDesbl.has("FINE") ? "fine" : "standard";
+        auditoria.push({ acao: "tier_reduzido_sem_ID", payload: { pedido: "artisan", aplicado: tierEfetivo, falta: "ARTISAN" } });
+      }
+      const tiers: Record<Produto, Tier> = { cadeira: tierEfetivo, mesa: tierEfetivo, armario: tierEfetivo };
       const subcontratacao = clamp(Number(coo.subcontratacao ?? 0), 0, 1);
       const comprarMaquinas = Math.max(0, Math.floor(Number(coo.comprar_maquinas ?? 0)));
       const id_modo = String(coo.id_modo ?? "interno");
@@ -236,8 +250,9 @@ Deno.serve(async (req) => {
         armario: Math.max(0, Number(producaoDec.armario ?? 0)),
       };
 
-      // Custo unitário por produto (COGS + horas extra + subcontratação).
+      // Custo unitário — LEAN aplica −8% se desbloqueado.
       const lw = CONST.custo_hora;
+      const leanMult = idDesbl.has("LEAN") ? 0.92 : 1;
       const custoUnit: Record<Produto, number> = { cadeira: 0, mesa: 0, armario: 0 };
       for (const p of Object.keys(PRODUTOS) as Produto[]) {
         const t = tiers[p];
@@ -247,12 +262,14 @@ Deno.serve(async (req) => {
           + PRODUTOS[p].consumivel;
         custoUnit[p] = base
           * (1 + (ritmo === "horas_extra" ? 0.25 * (overtime / 40) : 0))
-          * (1 + subcontratacao * 0.18);
+          * (1 + subcontratacao * 0.18)
+          * leanMult;
       }
 
-      // Capacidade.
+      // Capacidade — AUTOMACAO aplica ×1.15 ao capMachine.
+      const automacaoMult = idDesbl.has("AUTOMACAO") ? 1.15 : 1;
       const capLabour = (trabalhadores * 160 + overtime * trabalhadores) * prodMult;
-      const capMachine = (estado.maquinas + comprarMaquinas) * 450 * prodMult;
+      const capMachine = (estado.maquinas + comprarMaquinas) * 450 * prodMult * automacaoMult;
       const labNeed = (Object.keys(PRODUTOS) as Produto[])
         .reduce((s, p) => s + alvo[p] * PRODUTOS[p].mao * TIERS[tiers[p]].mao_mult, 0);
       const machNeed = (Object.keys(PRODUTOS) as Produto[])

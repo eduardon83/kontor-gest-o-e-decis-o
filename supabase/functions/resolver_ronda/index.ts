@@ -612,10 +612,14 @@ Deno.serve(async (req) => {
 
     await sb.from("rondas").update({ estado: "resolvida" }).eq("id", ronda.id);
     if (ronda.indice < comp.duracao_turnos) {
+      const dh = Number((comp.params as any)?.duracao_ronda_horas ?? 0);
+      const abre = new Date();
+      const prazo = dh > 0 ? new Date(abre.getTime() + dh * 3_600_000).toISOString() : null;
       await sb.from("rondas").insert({
         competicao_id: comp.id, indice: ronda.indice + 1, estado: "aberta",
-        abre_em: new Date().toISOString(),
+        abre_em: abre.toISOString(), prazo_em: prazo,
       });
+
     } else {
       await sb.from("competicoes").update({ estado: "terminada" }).eq("id", comp.id);
     }

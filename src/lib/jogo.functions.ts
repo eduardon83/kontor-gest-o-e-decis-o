@@ -127,7 +127,7 @@ export const submeterDecisao = createServerFn({ method: "POST" })
       ronda_id: data.ronda_id,
       equipa_id: data.equipa_id,
       lugar: data.lugar,
-      payload: data.payload,
+      payload: data.payload as never,
       submetido_por: userId,
       submetido_em: data.submeter ? new Date().toISOString() : null,
     };

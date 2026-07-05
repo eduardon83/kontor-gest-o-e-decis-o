@@ -113,6 +113,42 @@ Deno.serve(async (req) => {
       return base;
     }
 
+    // Janela dos últimos até 3 turnos para deteção de perfil emergente.
+    async function janelaDec(equipa_id: string, decsAtual: Record<string, Record<string, unknown>>): Promise<Profile & { nome: string }> {
+      const { data } = await sb.from("estado_empresa")
+        .select("snapshot, criado_em").eq("equipa_id", equipa_id)
+        .order("criado_em", { ascending: false }).limit(2);
+      const amostras: JanelaDec[] = [];
+      // Turno atual (a decidir).
+      amostras.push({
+        id_orcamento: Number(decsAtual.CFO?.id_orcamento ?? 0),
+        contratar_investigadores: Number(decsAtual.CHRO?.contratar_investigadores ?? 0),
+        wageRatio: Number(decsAtual.CHRO?.salario ?? 1),
+        formacao: Number(decsAtual.CHRO?.formacao ?? 0),
+        marketing: Number(decsAtual.CMO?.marketing ?? 0),
+        producao_total: (() => {
+          const pr = (decsAtual.COO?.producao as Record<string, number> | undefined) ?? {};
+          return Number(pr.cadeira ?? 0) + Number(pr.mesa ?? 0) + Number(pr.armario ?? 0);
+        })(),
+      });
+      for (const row of data ?? []) {
+        const s = row.snapshot as Record<string, unknown> | null;
+        if (!s) continue;
+        const dec = (s.decisoes_resumo as Record<string, unknown> | undefined) ?? {};
+        amostras.push({
+          id_orcamento: Number(dec.id_orcamento ?? 0),
+          contratar_investigadores: Number(dec.contratar_investigadores ?? 0),
+          wageRatio: Number(dec.wageRatio ?? s.wageRatio ?? 1),
+          formacao: Number(dec.formacao ?? 0),
+          marketing: Number(dec.marketing ?? 0),
+          producao_total: Number(dec.producao_total ?? 0),
+        });
+      }
+      const med = mediaJanela(amostras);
+      const { nome, profile } = detetarPerfil(med);
+      return { ...profile, nome };
+    }
+
     type BufItem = {
       equipa_id: string; mercado_id: string; is_ia: boolean; estado: EstadoBase;
       dec: Record<string, Record<string, unknown>>;

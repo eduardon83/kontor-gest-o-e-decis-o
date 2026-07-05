@@ -354,7 +354,8 @@ Deno.serve(async (req) => {
         auditoria.push({ acao: "emprestimo_clampado_teto", payload: { pedido: emprestimoPed, aplicado: emprestimoOk, teto: tetoDivida } });
       }
       const amortizar = Math.max(0, Math.min(Number(dec.CFO?.amortizar ?? 0), estado.divida + emprestimoOk));
-      const capex = Math.max(0, Number(dec.CFO?.capex ?? 0)); // pago em caixa
+      // capex já calculado acima (limita comprarMaquinas)
+
       const dividendos = Math.max(0, Number(dec.CEO?.dividendos ?? 0));
       const formacao = Math.max(0, Number(dec.CHRO?.formacao ?? 0));
       const bonus = Math.max(0, Number(dec.CHRO?.bonus ?? 0));

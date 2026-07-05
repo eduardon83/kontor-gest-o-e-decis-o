@@ -120,10 +120,24 @@ Deno.serve(async (req) => {
     }
 
     const arquetipos = Object.keys(ARQUETIPOS) as Arquetipo[];
+    // salario_mult por papel: trabalhador 1.0, supervisor 1.4, gestor_linha 2.0.
+    // ~1 supervisor por cada 8 trabalhadores. Investigador só se aplicável (por defeito 0).
+    const SALARIO_POR_PAPEL: Record<string, number> = {
+      trabalhador: 1.0, supervisor: 1.4, gestor_linha: 2.0, investigador: 1.6,
+    };
     const colaboradores: Record<string, unknown>[] = [];
     for (const eq of equipas) {
-      const nColab = 6 + randInt(rPessoas, 0, 4);
-      for (let i = 0; i < nColab; i++) {
+      const nTrab = 6 + randInt(rPessoas, 0, 4);
+      const nSup = Math.max(1, Math.round(nTrab / 8));
+      const nGestor = 1;
+      const nInvest = 0; // criados por ações de CHRO/CEO posteriores.
+      const perfilPapel: string[] = [
+        ...Array(nTrab).fill("trabalhador"),
+        ...Array(nSup).fill("supervisor"),
+        ...Array(nGestor).fill("gestor_linha"),
+        ...Array(nInvest).fill("investigador"),
+      ];
+      for (const papel of perfilPapel) {
         const arq = pick(rPessoas, arquetipos);
         const spec = ARQUETIPOS[arq];
         const rng = (r: [number, number]) => Math.round(randRange(rPessoas, r[0], r[1]));
@@ -131,7 +145,7 @@ Deno.serve(async (req) => {
           equipa_id: eq.id,
           arquetipo: arq,
           avatar_variante: randInt(rPessoas, 1, 2),
-          papel_org: "operacoes",
+          papel_org: papel,
           competencia: rng(spec.competencia),
           produtividade_base: rng(spec.produtividade),
           motivacao: rng(spec.motivacao),
@@ -139,7 +153,7 @@ Deno.serve(async (req) => {
           resiliencia: rng(spec.resiliencia),
           aptidao_gestao: rng(spec.aptidao_gestao),
           antiguidade: randInt(rPessoas, 0, 15),
-          salario_mult: Number(randRange(rPessoas, 0.9, 1.2).toFixed(2)),
+          salario_mult: SALARIO_POR_PAPEL[papel] ?? 1.0,
           necessidades: { ambicao: rng(spec.ambicao) },
         });
       }

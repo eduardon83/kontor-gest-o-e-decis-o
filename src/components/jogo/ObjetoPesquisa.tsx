@@ -1,23 +1,31 @@
+import { useState } from "react";
 import { useJogo } from "./JogoContext";
-import { OBJETO_SECRETARIA, RESULTADOS_PESQUISA } from "@/lib/jogo/dados-exemplo";
+import { OBJETO_SECRETARIA } from "@/lib/jogo/dados-exemplo";
 import type { Lugar } from "@/lib/jogo/tipos";
 
-export function ObjetoPesquisa({ lugar }: { lugar: Lugar }) {
-  const { pesquisas, adicionarPesquisa, podeEditar } = useJogo();
-  const obj = OBJETO_SECRETARIA[lugar];
-  const lista = pesquisas[lugar];
-  const editavel = podeEditar(lugar);
+const TIPO_POR_LUGAR: Record<Lugar, string> = {
+  CEO: "dialogo",
+  CFO: "estudo_economico",
+  COO: "analise_id",
+  CMO: "pesquisa_mercado",
+  CHRO: "concorrencia_parcial",
+};
 
-  function investigar() {
-    const pool = RESULTADOS_PESQUISA[lugar];
-    const escolha = pool[Math.floor(Math.random() * pool.length)];
-    adicionarPesquisa(lugar, {
-      id: crypto.randomUUID(),
-      quando: `Turno 4 · agora`,
-      titulo: escolha.titulo,
-      resumo: escolha.resumo,
-      confianca: escolha.confianca,
-    });
+export function ObjetoPesquisa({ lugar }: { lugar: Lugar }) {
+  const { pesquisas, usarPesquisa, podeEditar } = useJogo();
+  const obj = OBJETO_SECRETARIA[lugar];
+  const lista = pesquisas[lugar] ?? [];
+  const editavel = podeEditar(lugar);
+  const [nivel, setNivel] = useState<"1" | "2" | "3">("1");
+  const [ocupado, setOcupado] = useState(false);
+
+  async function investigar() {
+    setOcupado(true);
+    try {
+      await usarPesquisa(lugar, TIPO_POR_LUGAR[lugar], nivel);
+    } finally {
+      setOcupado(false);
+    }
   }
 
   return (
@@ -31,7 +39,7 @@ export function ObjetoPesquisa({ lugar }: { lugar: Lugar }) {
 
       <div className="flex items-center gap-4 border-b bg-muted/30 p-4">
         <button
-          disabled={!editavel}
+          disabled={!editavel || ocupado}
           onClick={investigar}
           aria-label={obj.acao}
           className="group flex h-16 w-16 items-center justify-center rounded-sm border bg-navy text-3xl transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
@@ -40,10 +48,22 @@ export function ObjetoPesquisa({ lugar }: { lugar: Lugar }) {
         >
           <span aria-hidden>{obj.icone}</span>
         </button>
-        <div>
+        <div className="flex-1">
           <div className="font-serif text-base">{obj.acao}</div>
           <div className="mono text-[10px] uppercase tracking-widest text-muted-foreground">
-            Clica no objeto para investigar
+            Máx. 1 por turno · escolha o nível
+          </div>
+          <div className="mt-2 flex gap-1.5">
+            {(["1", "2", "3"] as const).map((n) => (
+              <button
+                key={n}
+                onClick={() => setNivel(n)}
+                disabled={!editavel}
+                className={`rounded-sm border px-2.5 py-1 text-xs disabled:opacity-50 ${nivel === n ? "border-gold bg-gold/10" : "border-border text-muted-foreground"}`}
+              >
+                Nível {n}
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -55,14 +75,20 @@ export function ObjetoPesquisa({ lugar }: { lugar: Lugar }) {
         {lista.map((p) => (
           <li key={p.id} className="p-4">
             <div className="flex items-baseline justify-between gap-3">
-              <div className="font-serif text-sm">{p.titulo}</div>
-              <span className="mono shrink-0 text-[10px] uppercase tracking-widest text-gold">
-                conf. {(p.confianca * 100).toFixed(0)}%
-              </span>
+              <div className="font-serif text-sm capitalize">{p.tipo.replace(/_/g, " ")}{p.nivel ? ` · Nv ${p.nivel}` : ""}</div>
+              {p.confianca != null && (
+                <span className="mono shrink-0 text-[10px] uppercase tracking-widest text-gold">
+                  conf. {Math.round(Number(p.confianca) * 100)}%
+                </span>
+              )}
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">{p.resumo}</p>
+            {p.resultado && (
+              <pre className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
+                {JSON.stringify(p.resultado, null, 2)}
+              </pre>
+            )}
             <div className="mono mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">
-              {p.quando}
+              {new Date(p.criado_em).toLocaleString("pt-PT")}
             </div>
           </li>
         ))}

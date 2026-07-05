@@ -17,7 +17,7 @@ import {
   CONST, PRECEDENCIA, PRODUTOS, TIERS, type Produto, type Tier,
 } from "../_shared/constants.ts";
 import {
-  ID_INICIAL, ID_NOS, PROFILE_NEUTRO, detetarPerfil, mediaJanela,
+  ID_INICIAL, detetarPerfil, mediaJanela,
   proximoElegivel, type IdEstado, type JanelaDec, type Profile,
 } from "../_shared/id_arvore.ts";
 

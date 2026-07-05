@@ -13,6 +13,7 @@ import { Route as EntrarHansaRouteImport } from './routes/entrar-hansa'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedNovaHansaRouteImport } from './routes/_authenticated/nova-hansa'
 import { Route as AuthenticatedPainelIndexRouteImport } from './routes/_authenticated/painel.index'
 import { Route as AuthenticatedPainelSuperAdminRouteImport } from './routes/_authenticated/painel.super-admin'
 import { Route as AuthenticatedPainelProfessorRouteImport } from './routes/_authenticated/painel.professor'
@@ -37,6 +38,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedNovaHansaRoute = AuthenticatedNovaHansaRouteImport.update({
+  id: '/nova-hansa',
+  path: '/nova-hansa',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPainelIndexRoute =
   AuthenticatedPainelIndexRouteImport.update({
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/entrar-hansa': typeof EntrarHansaRoute
+  '/nova-hansa': typeof AuthenticatedNovaHansaRoute
   '/painel/admin-escolar': typeof AuthenticatedPainelAdminEscolarRoute
   '/painel/jogador': typeof AuthenticatedPainelJogadorRoute
   '/painel/professor': typeof AuthenticatedPainelProfessorRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/entrar-hansa': typeof EntrarHansaRoute
+  '/nova-hansa': typeof AuthenticatedNovaHansaRoute
   '/painel/admin-escolar': typeof AuthenticatedPainelAdminEscolarRoute
   '/painel/jogador': typeof AuthenticatedPainelJogadorRoute
   '/painel/professor': typeof AuthenticatedPainelProfessorRoute
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/entrar-hansa': typeof EntrarHansaRoute
+  '/_authenticated/nova-hansa': typeof AuthenticatedNovaHansaRoute
   '/_authenticated/painel/admin-escolar': typeof AuthenticatedPainelAdminEscolarRoute
   '/_authenticated/painel/jogador': typeof AuthenticatedPainelJogadorRoute
   '/_authenticated/painel/professor': typeof AuthenticatedPainelProfessorRoute
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/entrar-hansa'
+    | '/nova-hansa'
     | '/painel/admin-escolar'
     | '/painel/jogador'
     | '/painel/professor'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/entrar-hansa'
+    | '/nova-hansa'
     | '/painel/admin-escolar'
     | '/painel/jogador'
     | '/painel/professor'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/entrar-hansa'
+    | '/_authenticated/nova-hansa'
     | '/_authenticated/painel/admin-escolar'
     | '/_authenticated/painel/jogador'
     | '/_authenticated/painel/professor'
@@ -172,6 +184,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/nova-hansa': {
+      id: '/_authenticated/nova-hansa'
+      path: '/nova-hansa'
+      fullPath: '/nova-hansa'
+      preLoaderRoute: typeof AuthenticatedNovaHansaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/painel/': {
       id: '/_authenticated/painel/'
       path: '/painel'
@@ -211,6 +230,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedNovaHansaRoute: typeof AuthenticatedNovaHansaRoute
   AuthenticatedPainelAdminEscolarRoute: typeof AuthenticatedPainelAdminEscolarRoute
   AuthenticatedPainelJogadorRoute: typeof AuthenticatedPainelJogadorRoute
   AuthenticatedPainelProfessorRoute: typeof AuthenticatedPainelProfessorRoute
@@ -219,6 +239,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedNovaHansaRoute: AuthenticatedNovaHansaRoute,
   AuthenticatedPainelAdminEscolarRoute: AuthenticatedPainelAdminEscolarRoute,
   AuthenticatedPainelJogadorRoute: AuthenticatedPainelJogadorRoute,
   AuthenticatedPainelProfessorRoute: AuthenticatedPainelProfessorRoute,

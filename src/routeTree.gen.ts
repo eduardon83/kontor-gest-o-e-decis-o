@@ -9,38 +9,162 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as EntrarHansaRouteImport } from './routes/entrar-hansa'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedPainelIndexRouteImport } from './routes/_authenticated/painel.index'
+import { Route as AuthenticatedPainelSuperAdminRouteImport } from './routes/_authenticated/painel.super-admin'
+import { Route as AuthenticatedPainelProfessorRouteImport } from './routes/_authenticated/painel.professor'
+import { Route as AuthenticatedPainelJogadorRouteImport } from './routes/_authenticated/painel.jogador'
+import { Route as AuthenticatedPainelAdminEscolarRouteImport } from './routes/_authenticated/painel.admin-escolar'
 
+const EntrarHansaRoute = EntrarHansaRouteImport.update({
+  id: '/entrar-hansa',
+  path: '/entrar-hansa',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedPainelIndexRoute =
+  AuthenticatedPainelIndexRouteImport.update({
+    id: '/painel/',
+    path: '/painel/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPainelSuperAdminRoute =
+  AuthenticatedPainelSuperAdminRouteImport.update({
+    id: '/painel/super-admin',
+    path: '/painel/super-admin',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPainelProfessorRoute =
+  AuthenticatedPainelProfessorRouteImport.update({
+    id: '/painel/professor',
+    path: '/painel/professor',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPainelJogadorRoute =
+  AuthenticatedPainelJogadorRouteImport.update({
+    id: '/painel/jogador',
+    path: '/painel/jogador',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPainelAdminEscolarRoute =
+  AuthenticatedPainelAdminEscolarRouteImport.update({
+    id: '/painel/admin-escolar',
+    path: '/painel/admin-escolar',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/entrar-hansa': typeof EntrarHansaRoute
+  '/painel/admin-escolar': typeof AuthenticatedPainelAdminEscolarRoute
+  '/painel/jogador': typeof AuthenticatedPainelJogadorRoute
+  '/painel/professor': typeof AuthenticatedPainelProfessorRoute
+  '/painel/super-admin': typeof AuthenticatedPainelSuperAdminRoute
+  '/painel/': typeof AuthenticatedPainelIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/entrar-hansa': typeof EntrarHansaRoute
+  '/painel/admin-escolar': typeof AuthenticatedPainelAdminEscolarRoute
+  '/painel/jogador': typeof AuthenticatedPainelJogadorRoute
+  '/painel/professor': typeof AuthenticatedPainelProfessorRoute
+  '/painel/super-admin': typeof AuthenticatedPainelSuperAdminRoute
+  '/painel': typeof AuthenticatedPainelIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/entrar-hansa': typeof EntrarHansaRoute
+  '/_authenticated/painel/admin-escolar': typeof AuthenticatedPainelAdminEscolarRoute
+  '/_authenticated/painel/jogador': typeof AuthenticatedPainelJogadorRoute
+  '/_authenticated/painel/professor': typeof AuthenticatedPainelProfessorRoute
+  '/_authenticated/painel/super-admin': typeof AuthenticatedPainelSuperAdminRoute
+  '/_authenticated/painel/': typeof AuthenticatedPainelIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/entrar-hansa'
+    | '/painel/admin-escolar'
+    | '/painel/jogador'
+    | '/painel/professor'
+    | '/painel/super-admin'
+    | '/painel/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/entrar-hansa'
+    | '/painel/admin-escolar'
+    | '/painel/jogador'
+    | '/painel/professor'
+    | '/painel/super-admin'
+    | '/painel'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/entrar-hansa'
+    | '/_authenticated/painel/admin-escolar'
+    | '/_authenticated/painel/jogador'
+    | '/_authenticated/painel/professor'
+    | '/_authenticated/painel/super-admin'
+    | '/_authenticated/painel/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
+  EntrarHansaRoute: typeof EntrarHansaRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/entrar-hansa': {
+      id: '/entrar-hansa'
+      path: '/entrar-hansa'
+      fullPath: '/entrar-hansa'
+      preLoaderRoute: typeof EntrarHansaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +172,69 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/painel/': {
+      id: '/_authenticated/painel/'
+      path: '/painel'
+      fullPath: '/painel/'
+      preLoaderRoute: typeof AuthenticatedPainelIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/painel/super-admin': {
+      id: '/_authenticated/painel/super-admin'
+      path: '/painel/super-admin'
+      fullPath: '/painel/super-admin'
+      preLoaderRoute: typeof AuthenticatedPainelSuperAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/painel/professor': {
+      id: '/_authenticated/painel/professor'
+      path: '/painel/professor'
+      fullPath: '/painel/professor'
+      preLoaderRoute: typeof AuthenticatedPainelProfessorRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/painel/jogador': {
+      id: '/_authenticated/painel/jogador'
+      path: '/painel/jogador'
+      fullPath: '/painel/jogador'
+      preLoaderRoute: typeof AuthenticatedPainelJogadorRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/painel/admin-escolar': {
+      id: '/_authenticated/painel/admin-escolar'
+      path: '/painel/admin-escolar'
+      fullPath: '/painel/admin-escolar'
+      preLoaderRoute: typeof AuthenticatedPainelAdminEscolarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedPainelAdminEscolarRoute: typeof AuthenticatedPainelAdminEscolarRoute
+  AuthenticatedPainelJogadorRoute: typeof AuthenticatedPainelJogadorRoute
+  AuthenticatedPainelProfessorRoute: typeof AuthenticatedPainelProfessorRoute
+  AuthenticatedPainelSuperAdminRoute: typeof AuthenticatedPainelSuperAdminRoute
+  AuthenticatedPainelIndexRoute: typeof AuthenticatedPainelIndexRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedPainelAdminEscolarRoute: AuthenticatedPainelAdminEscolarRoute,
+  AuthenticatedPainelJogadorRoute: AuthenticatedPainelJogadorRoute,
+  AuthenticatedPainelProfessorRoute: AuthenticatedPainelProfessorRoute,
+  AuthenticatedPainelSuperAdminRoute: AuthenticatedPainelSuperAdminRoute,
+  AuthenticatedPainelIndexRoute: AuthenticatedPainelIndexRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
+  EntrarHansaRoute: EntrarHansaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

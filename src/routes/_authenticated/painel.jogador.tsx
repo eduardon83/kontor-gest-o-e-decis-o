@@ -1,20 +1,44 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PainelShell, Placeholder } from "@/components/painel/PainelShell";
+import { JogoProvider, useJogo } from "@/components/jogo/JogoContext";
+import { BarraTopo } from "@/components/jogo/BarraTopo";
+import { BarraLugares } from "@/components/jogo/BarraLugares";
+import { NavSalas } from "@/components/jogo/NavSalas";
+import { Gabinete } from "@/components/jogo/salas/Gabinete";
+import { SalaBoard } from "@/components/jogo/salas/SalaBoard";
+import { ChaoFabrica } from "@/components/jogo/salas/ChaoFabrica";
+import { Laboratorio } from "@/components/jogo/salas/Laboratorio";
+import { Ruas } from "@/components/jogo/salas/Ruas";
+import { Jornal } from "@/components/jogo/salas/Jornal";
 
 export const Route = createFileRoute("/_authenticated/painel/jogador")({
-  component: () => (
-    <PainelShell
-      papel="jogador"
-      titulo="A sua empresa"
-      descricao="Decida com a sua equipa, semana após semana. O mercado responde."
-    >
-      <Placeholder
-        items={[
-          { t: "Pasta executiva", d: "A sua área de decisão dentro da equipa." },
-          { t: "Semana em curso", d: "Propostas, debate e submissão em equipa." },
-          { t: "Mercado", d: "Preços, procura, concorrência e indicadores." },
-        ]}
-      />
-    </PainelShell>
-  ),
+  component: PaginaJogo,
 });
+
+function PaginaJogo() {
+  return (
+    <JogoProvider>
+      <div className="min-h-screen bg-background text-foreground">
+        <BarraTopo />
+        <BarraLugares />
+        <div className="mx-auto flex max-w-[1400px]">
+          <NavSalas />
+          <main className="flex-1 p-6">
+            <SalaAtual />
+          </main>
+        </div>
+      </div>
+    </JogoProvider>
+  );
+}
+
+function SalaAtual() {
+  const { sala } = useJogo();
+  switch (sala) {
+    case "gabinete": return <Gabinete />;
+    case "board": return <SalaBoard />;
+    case "fabrica": return <ChaoFabrica />;
+    case "laboratorio": return <Laboratorio />;
+    case "ruas": return <Ruas />;
+    case "jornal": return <Jornal />;
+  }
+}

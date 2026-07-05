@@ -400,7 +400,7 @@ Deno.serve(async (req) => {
       const rEq = stream(Number(comp.seed) + ronda.indice * 104729, `equipa:${b.equipa_id}`);
       const vendas = vendasPorEquipa.get(b.equipa_id) ?? { cadeira: 0, mesa: 0, armario: 0 };
       let receita = receitasPorEquipa.get(b.equipa_id) ?? 0;
-      const profile = DEFAULT_PROFILE;
+      const profile = b.profile;
       const M = b.estado.moral, S = b.estado.stress_org;
 
       // Eventos (§8).

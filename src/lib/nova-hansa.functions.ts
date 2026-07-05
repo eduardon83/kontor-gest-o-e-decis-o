@@ -199,7 +199,25 @@ export const criarHansa = createServerFn({ method: "POST" })
     });
     if (erroRonda) throw new Error(erroRonda.message);
 
-    // TODO(fase-5): chamar Edge Function `gerar_economia` para gerar economia oculta a partir da seed.
+    // Fase 5 · chama a Edge Function `gerar_economia` (server-authoritative,
+    // service-role) para produzir a economia oculta e os colaboradores a partir da seed.
+    try {
+      const url = process.env.SUPABASE_URL;
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (url && serviceKey) {
+        await fetch(`${url}/functions/v1/gerar_economia`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${serviceKey}`,
+            "apikey": serviceKey,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ competicao_id: comp.id }),
+        });
+      }
+    } catch (e) {
+      console.error("[gerar_economia] falha ao invocar", e);
+    }
 
     return {
       competicao_id: comp.id,

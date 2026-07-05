@@ -88,6 +88,45 @@ Deno.serve(async (req) => {
       decisoesPorEquipa.set(d.equipa_id, arr);
     }
 
+    // ─── Oponentes IA — gera decisões heurísticas determinísticas ─────────────
+    // Perfis: agressivo_preco / foco_qualidade / equilibrado. Um por equipa IA.
+    const IA_PERFIS = ["agressivo_preco", "foco_qualidade", "equilibrado"] as const;
+    type IAPerfil = typeof IA_PERFIS[number];
+    const iaDecisoesInsert: Record<string, unknown>[] = [];
+    const iaAuditoria: Record<string, unknown>[] = [];
+    for (const eq of equipasArr) {
+      if (!eq.is_ia) continue;
+      if ((decisoesPorEquipa.get(eq.id)?.length ?? 0) > 0) continue;
+      const rIA = stream(Number(comp.seed) + ronda.indice * 7919, `ia:${eq.id}`);
+      const perfil: IAPerfil = IA_PERFIS[Math.abs(hashLabel(eq.id)) % IA_PERFIS.length];
+      const dec = gerarDecisoesIA(perfil, rIA, macro);
+      iaAuditoria.push({ acao: "ronda:ia_decisoes_geradas", alvo: eq.id, payload: { ronda_id: ronda.id, perfil } });
+      const agora = new Date().toISOString();
+      for (const lugar of PRECEDENCIA) {
+        const payload = dec[lugar];
+        iaDecisoesInsert.push({
+          ronda_id: ronda.id, equipa_id: eq.id, lugar,
+          payload, submetido_em: agora, gerado_por_ia: true,
+        });
+        const arr = decisoesPorEquipa.get(eq.id) ?? [];
+        arr.push({ lugar, payload, submetido_em: agora });
+        decisoesPorEquipa.set(eq.id, arr);
+      }
+    }
+    if (iaDecisoesInsert.length) {
+      // A coluna gerado_por_ia é opcional; tenta insert com; se falhar, retira-a.
+      const { error: eIA1 } = await sb.from("decisoes").insert(iaDecisoesInsert);
+      if (eIA1) {
+        const semFlag = iaDecisoesInsert.map((d) => {
+          const { gerado_por_ia: _x, ...rest } = d as Record<string, unknown>;
+          return rest;
+        });
+        await sb.from("decisoes").insert(semFlag);
+      }
+      await sb.from("log_auditoria").insert(iaAuditoria);
+    }
+
+
     const { data: colabs } = await sb.from("colaboradores")
       .select("*").in("equipa_id", equipasArr.map((e) => e.id));
     const colabsPorEquipa = new Map<string, typeof colabs>();

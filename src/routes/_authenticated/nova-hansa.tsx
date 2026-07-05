@@ -113,6 +113,8 @@ function NovaHansaPage() {
             capital_inicial: capital,
           },
           duracao_turnos: duracao,
+          duracao_ronda_horas: duracaoRondaHoras,
+
           modo,
           n_mercados: nMercados,
           equipas_alunos: equipasEnviar.map((e) => ({

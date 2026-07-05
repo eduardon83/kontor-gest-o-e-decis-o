@@ -89,7 +89,7 @@ export const criarHansa = createServerFn({ method: "POST" })
         ambito: data.ambito,
         industria: data.industria,
         seed: data.seed,
-        params: data.params,
+        params: { ...data.params, duracao_ronda_horas: data.duracao_ronda_horas },
         duracao_turnos: data.duracao_turnos,
         instituicao_id: perfil.instituicao_id,
         criado_por: userId,

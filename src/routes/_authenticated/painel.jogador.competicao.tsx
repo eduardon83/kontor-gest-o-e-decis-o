@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { PainelShell } from "@/components/painel/PainelShell";
 import { resultadosCompeticao } from "@/lib/competicao.functions";
-import { MercadoBloco } from "@/routes/_authenticated/painel.professor.competicao.$id";
+import { MercadoBloco } from "@/components/competicao/MercadoBloco";
 
 export const Route = createFileRoute("/_authenticated/painel/jogador/competicao")({
   validateSearch: (s) => z.object({

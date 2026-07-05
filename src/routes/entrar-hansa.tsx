@@ -27,7 +27,7 @@ function EntrarHansa() {
     e.preventDefault();
     setAviso(null);
     if (!autenticado) {
-      navigate({ to: "/auth", search: { redirect: `/entrar-hansa?codigo=${codigo}` } as never });
+      navigate({ to: "/auth" });
       return;
     }
     setCarregando(true);

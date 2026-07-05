@@ -31,11 +31,14 @@ const inputSchema = z.object({
   seed: z.number().int(),
   params: paramsSchema,
   duracao_turnos: z.number().int().min(1).max(40),
+  // 0 = sem prazo automático (só avanço manual pelo professor). Default 168h = 1 semana.
+  duracao_ronda_horas: z.number().min(0).max(24 * 60).default(168),
   modo: z.enum(["so_equipas", "vs_computador", "misto"]),
   n_mercados: z.number().int().min(1).max(8),
   equipas_alunos: z.array(equipaAlunosSchema).min(0).max(24),
   n_ia: z.number().int().min(0).max(12),
 });
+
 
 export type NovaHansaInput = z.infer<typeof inputSchema>;
 

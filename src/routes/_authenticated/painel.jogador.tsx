@@ -11,6 +11,7 @@ import { Laboratorio } from "@/components/jogo/salas/Laboratorio";
 import { Ruas } from "@/components/jogo/salas/Ruas";
 import { Jornal } from "@/components/jogo/salas/Jornal";
 import type { Lugar } from "@/lib/jogo/tipos";
+import { TemaDaEquipa } from "@/components/tema/TemaDaEquipa";
 
 const searchSchema = z.object({
   equipa: z.string().uuid().optional(),
@@ -25,18 +26,20 @@ export const Route = createFileRoute("/_authenticated/painel/jogador")({
 function PaginaJogo() {
   const { equipa, lugar } = Route.useSearch();
   return (
-    <JogoProvider equipaId={equipa ?? null} lugarInicial={(lugar as Lugar | undefined) ?? null}>
-      <div className="min-h-screen bg-background text-foreground">
-        <BarraTopo />
-        <BarraLugares />
-        <div className="mx-auto flex max-w-[1400px]">
-          <NavSalas />
-          <main className="flex-1 p-6">
-            <SalaAtual />
-          </main>
+    <TemaDaEquipa equipaId={equipa ?? null}>
+      <JogoProvider equipaId={equipa ?? null} lugarInicial={(lugar as Lugar | undefined) ?? null}>
+        <div className="min-h-screen bg-background text-foreground">
+          <BarraTopo />
+          <BarraLugares />
+          <div className="mx-auto flex max-w-[1400px]">
+            <NavSalas />
+            <main className="flex-1 p-6">
+              <SalaAtual />
+            </main>
+          </div>
         </div>
-      </div>
-    </JogoProvider>
+      </JogoProvider>
+    </TemaDaEquipa>
   );
 }
 

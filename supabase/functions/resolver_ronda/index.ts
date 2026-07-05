@@ -16,6 +16,10 @@ import { clamp, stream } from "../_shared/prng.ts";
 import {
   CONST, PRECEDENCIA, PRODUTOS, TIERS, type Produto, type Tier,
 } from "../_shared/constants.ts";
+import {
+  ID_INICIAL, detetarPerfil, mediaJanela,
+  proximoElegivel, type IdEstado, type JanelaDec, type Profile,
+} from "../_shared/id_arvore.ts";
 
 type Decisao = { lugar: string; payload: Record<string, unknown>; submetido_em: string | null };
 type EstadoBase = {
@@ -24,6 +28,7 @@ type EstadoBase = {
   maquinas: number; forca_vendas: number;
   trabalhadores: number; supervisores: number; investigadores: number;
   prejuizos_acum: number; historia: string[];
+  id: IdEstado;
 };
 
 const DEFAULT_ESTADO = (capital: number): EstadoBase => ({
@@ -32,12 +37,11 @@ const DEFAULT_ESTADO = (capital: number): EstadoBase => ({
   maquinas: 6, forca_vendas: 3,
   trabalhadores: 8, supervisores: 1, investigadores: 0,
   prejuizos_acum: 0, historia: [],
+  id: { ...ID_INICIAL },
 });
 
 // Horas-máquina por unidade produzida.
 const MACH_H: Record<Produto, number> = { cadeira: 1, mesa: 2.5, armario: 4 };
-
-const DEFAULT_PROFILE = { apMod: 1, greveMod: 1, pushMod: 1, rdMod: 1, qMod: 1 };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -109,11 +113,47 @@ Deno.serve(async (req) => {
       return base;
     }
 
+    // Janela dos últimos até 3 turnos para deteção de perfil emergente.
+    async function janelaDec(equipa_id: string, decsAtual: Record<string, Record<string, unknown>>): Promise<Profile & { nome: string }> {
+      const { data } = await sb.from("estado_empresa")
+        .select("snapshot, criado_em").eq("equipa_id", equipa_id)
+        .order("criado_em", { ascending: false }).limit(2);
+      const amostras: JanelaDec[] = [];
+      // Turno atual (a decidir).
+      amostras.push({
+        id_orcamento: Number(decsAtual.CFO?.id_orcamento ?? 0),
+        contratar_investigadores: Number(decsAtual.CHRO?.contratar_investigadores ?? 0),
+        wageRatio: Number(decsAtual.CHRO?.salario ?? 1),
+        formacao: Number(decsAtual.CHRO?.formacao ?? 0),
+        marketing: Number(decsAtual.CMO?.marketing ?? 0),
+        producao_total: (() => {
+          const pr = (decsAtual.COO?.producao as Record<string, number> | undefined) ?? {};
+          return Number(pr.cadeira ?? 0) + Number(pr.mesa ?? 0) + Number(pr.armario ?? 0);
+        })(),
+      });
+      for (const row of data ?? []) {
+        const s = row.snapshot as Record<string, unknown> | null;
+        if (!s) continue;
+        const dec = (s.decisoes_resumo as Record<string, unknown> | undefined) ?? {};
+        amostras.push({
+          id_orcamento: Number(dec.id_orcamento ?? 0),
+          contratar_investigadores: Number(dec.contratar_investigadores ?? 0),
+          wageRatio: Number(dec.wageRatio ?? s.wageRatio ?? 1),
+          formacao: Number(dec.formacao ?? 0),
+          marketing: Number(dec.marketing ?? 0),
+          producao_total: Number(dec.producao_total ?? 0),
+        });
+      }
+      const med = mediaJanela(amostras);
+      const { nome, profile } = detetarPerfil(med);
+      return { ...profile, nome };
+    }
+
     type BufItem = {
       equipa_id: string; mercado_id: string; is_ia: boolean; estado: EstadoBase;
       dec: Record<string, Record<string, unknown>>;
       auditoria: { acao: string; payload: Record<string, unknown> }[];
-      aDelta: number; // ajuste a "ambicao_org" (alinhamento) por clamps/anulações
+      aDelta: number;
       ritmo: string; overtime: number;
       tiers: Record<Produto, Tier>;
       producao: Record<Produto, number>;
@@ -128,6 +168,7 @@ Deno.serve(async (req) => {
       empréstimo_novo: number; amortizar: number; dividendos: number;
       rdCost: number; id_modo: string;
       custoUnit: Record<Produto, number>;
+      profile: Profile; perfilNome: string;
     };
 
     const buffer: BufItem[] = [];
@@ -168,8 +209,13 @@ Deno.serve(async (req) => {
         0.5, 1.4,
       );
       const skill = rollup.competencia_norm; // já normalizado ~1
+
+      // Perfil emergente (janela últimos ≤3 turnos, incluindo o atual).
+      const perfil = await janelaDec(eq.id, dec);
+      const profile: Profile = { apMod: perfil.apMod, greveMod: perfil.greveMod, pushMod: perfil.pushMod, rdMod: perfil.rdMod, qMod: perfil.qMod };
+
       const qualMult = clamp(
-        1 + 0.20 * (skill - 1) + 0.10 * ((rollup.M - 50) / 50),
+        (1 + 0.20 * (skill - 1) + 0.10 * ((rollup.M - 50) / 50)) * profile.qMod,
         0.7, 1.35,
       );
       const wageRatio = Number(dec.CHRO?.salario ?? 1.0);
@@ -180,11 +226,20 @@ Deno.serve(async (req) => {
         0, 0.6,
       );
 
-      // Decisões COO.
+      // Decisões COO — validação de tier vs. árvore de I&D.
       const ritmo = String((coo.ritmo as string) ?? "normal");
       const overtime = ritmo === "horas_extra" ? 40 : 0;
-      const tierUnico = (coo.tier as Tier) ?? "standard";
-      const tiers: Record<Produto, Tier> = { cadeira: tierUnico, mesa: tierUnico, armario: tierUnico };
+      const tierPedido = (coo.tier as Tier) ?? "standard";
+      const idDesbl = new Set(estado.id.desbloqueados);
+      let tierEfetivo: Tier = tierPedido;
+      if (tierPedido === "fine" && !idDesbl.has("FINE")) {
+        tierEfetivo = "standard";
+        auditoria.push({ acao: "tier_reduzido_sem_ID", payload: { pedido: "fine", aplicado: "standard", falta: "FINE" } });
+      } else if (tierPedido === "artisan" && !idDesbl.has("ARTISAN")) {
+        tierEfetivo = idDesbl.has("FINE") ? "fine" : "standard";
+        auditoria.push({ acao: "tier_reduzido_sem_ID", payload: { pedido: "artisan", aplicado: tierEfetivo, falta: "ARTISAN" } });
+      }
+      const tiers: Record<Produto, Tier> = { cadeira: tierEfetivo, mesa: tierEfetivo, armario: tierEfetivo };
       const subcontratacao = clamp(Number(coo.subcontratacao ?? 0), 0, 1);
       const comprarMaquinas = Math.max(0, Math.floor(Number(coo.comprar_maquinas ?? 0)));
       const id_modo = String(coo.id_modo ?? "interno");
@@ -195,8 +250,9 @@ Deno.serve(async (req) => {
         armario: Math.max(0, Number(producaoDec.armario ?? 0)),
       };
 
-      // Custo unitário por produto (COGS + horas extra + subcontratação).
+      // Custo unitário — LEAN aplica −8% se desbloqueado.
       const lw = CONST.custo_hora;
+      const leanMult = idDesbl.has("LEAN") ? 0.92 : 1;
       const custoUnit: Record<Produto, number> = { cadeira: 0, mesa: 0, armario: 0 };
       for (const p of Object.keys(PRODUTOS) as Produto[]) {
         const t = tiers[p];
@@ -206,12 +262,14 @@ Deno.serve(async (req) => {
           + PRODUTOS[p].consumivel;
         custoUnit[p] = base
           * (1 + (ritmo === "horas_extra" ? 0.25 * (overtime / 40) : 0))
-          * (1 + subcontratacao * 0.18);
+          * (1 + subcontratacao * 0.18)
+          * leanMult;
       }
 
-      // Capacidade.
+      // Capacidade — AUTOMACAO aplica ×1.15 ao capMachine.
+      const automacaoMult = idDesbl.has("AUTOMACAO") ? 1.15 : 1;
       const capLabour = (trabalhadores * 160 + overtime * trabalhadores) * prodMult;
-      const capMachine = (estado.maquinas + comprarMaquinas) * 450 * prodMult;
+      const capMachine = (estado.maquinas + comprarMaquinas) * 450 * prodMult * automacaoMult;
       const labNeed = (Object.keys(PRODUTOS) as Produto[])
         .reduce((s, p) => s + alvo[p] * PRODUTOS[p].mao * TIERS[tiers[p]].mao_mult, 0);
       const machNeed = (Object.keys(PRODUTOS) as Produto[])
@@ -258,9 +316,7 @@ Deno.serve(async (req) => {
       const export_share = canal === "exportacao" ? 1 : 0;
       const id_orcamento = Math.max(0, Number(dec.CFO?.id_orcamento ?? 0));
 
-      // Apelo (com profile default). Marketing entra depois via profile.apMod
-      // (por agora apMod=1 conforme instrução).
-      const profile = DEFAULT_PROFILE;
+      // Apelo com profile emergente.
       const apelo: Record<Produto, number> = { cadeira: 0, mesa: 0, armario: 0 };
       for (const p of Object.keys(PRODUTOS) as Produto[]) {
         const t = tiers[p];
@@ -290,6 +346,7 @@ Deno.serve(async (req) => {
         empréstimo_novo: emprestimoOk, amortizar, dividendos,
         rdCost, id_modo,
         custoUnit,
+        profile, perfilNome: perfil.nome,
       };
       buffer.push(item);
       const arr = apeloPorMercado.get(eq.mercado_id) ?? [];
@@ -343,7 +400,7 @@ Deno.serve(async (req) => {
       const rEq = stream(Number(comp.seed) + ronda.indice * 104729, `equipa:${b.equipa_id}`);
       const vendas = vendasPorEquipa.get(b.equipa_id) ?? { cadeira: 0, mesa: 0, armario: 0 };
       let receita = receitasPorEquipa.get(b.equipa_id) ?? 0;
-      const profile = DEFAULT_PROFILE;
+      const profile = b.profile;
       const M = b.estado.moral, S = b.estado.stress_org;
 
       // Eventos (§8).
@@ -362,12 +419,28 @@ Deno.serve(async (req) => {
       const eventosEq: { tipo: string; magnitude?: number }[] = [];
       if (rEq() < pGreve) { eventCapMult *= 0.55; eventosEq.push({ tipo: "greve" }); }
       if (rEq() < pPush) { eventCapMult *= 1.15; eventosEq.push({ tipo: "push_output" }); }
-      if (rEq() < pBreak) { eventosEq.push({ tipo: "breakthrough_ID" }); moralDelta += 5; }
+      let breakthrough = false;
+      if (rEq() < pBreak) { eventosEq.push({ tipo: "breakthrough_ID" }); moralDelta += 5; breakthrough = true; }
       if (rEq() < clamp(0.02 + 0.35 * Math.max(0, (50 - M) / 50) + 0.40 * Math.max(0, 1 - b.wageRatio) + 0.25 * Math.max(0, (S - 70) / 30), 0, 0.6) * 0.5) {
         eventosEq.push({ tipo: "saida_talento" }); skillDelta -= 0.15;
       }
       let burnout = false;
       if (S > 70 && rEq() < 0.4) { burnout = true; eventosEq.push({ tipo: "burnout" }); stressDelta += 10; }
+
+      // Progressão da árvore de I&D.
+      const idNovo: IdEstado = {
+        desbloqueados: [...b.estado.id.desbloqueados],
+        progresso: b.estado.id.progresso + rdProgress,
+      };
+      // Um desbloqueio por turno (o breakthrough força mesmo sem custo cumprido).
+      const prox = proximoElegivel(idNovo);
+      if (prox) {
+        if (breakthrough || idNovo.progresso >= prox.custo) {
+          idNovo.desbloqueados.push(prox.id);
+          idNovo.progresso = Math.max(0, idNovo.progresso - prox.custo);
+          eventosEq.push({ tipo: `ID_desbloqueado:${prox.id}` });
+        }
+      }
 
       // Aplica eventCapMult retroativamente (às vendas — proporção da capacidade).
       if (eventCapMult !== 1) {
@@ -445,9 +518,19 @@ Deno.serve(async (req) => {
         forca_vendas: b.forca_vendas,
         trabalhadores: trabalhadoresNovo, supervisores: supervisoresNovo, investigadores: investigadoresNovo,
         prejuizos_acum: prejuizosNovo, historia: [...b.estado.historia, `turno ${ronda.indice}`],
+        id: idNovo,
         turno: ronda.indice, vendas, receita, prodCost, fixed, interest, imposto, resultado: net,
         precos: b.precos, tiers: b.tiers, ritmo: b.ritmo, wageRatio: b.wageRatio,
         prodMult: b.prodMult, qualMult: b.qualMult,
+        perfil_emergente: b.perfilNome,
+        decisoes_resumo: {
+          id_orcamento: Number(b.dec.CFO?.id_orcamento ?? 0),
+          contratar_investigadores: Number(b.dec.CHRO?.contratar_investigadores ?? 0),
+          wageRatio: b.wageRatio,
+          formacao: b.formacao,
+          marketing: b.marketing,
+          producao_total: b.producao.cadeira + b.producao.mesa + b.producao.armario,
+        },
         macro, notas: b.auditoria,
       };
       snapshotsInsert.push({ equipa_id: b.equipa_id, ronda_id: ronda.id, snapshot });

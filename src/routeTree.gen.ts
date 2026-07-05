@@ -19,6 +19,7 @@ import { Route as AuthenticatedPainelSuperAdminRouteImport } from './routes/_aut
 import { Route as AuthenticatedPainelProfessorRouteImport } from './routes/_authenticated/painel.professor'
 import { Route as AuthenticatedPainelJogadorRouteImport } from './routes/_authenticated/painel.jogador'
 import { Route as AuthenticatedPainelAdminEscolarRouteImport } from './routes/_authenticated/painel.admin-escolar'
+import { Route as ApiPublicHooksResolverTickRouteImport } from './routes/api/public/hooks/resolver-tick'
 
 const EntrarHansaRoute = EntrarHansaRouteImport.update({
   id: '/entrar-hansa',
@@ -74,6 +75,12 @@ const AuthenticatedPainelAdminEscolarRoute =
     path: '/painel/admin-escolar',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiPublicHooksResolverTickRoute =
+  ApiPublicHooksResolverTickRouteImport.update({
+    id: '/api/public/hooks/resolver-tick',
+    path: '/api/public/hooks/resolver-tick',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -85,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/painel/professor': typeof AuthenticatedPainelProfessorRoute
   '/painel/super-admin': typeof AuthenticatedPainelSuperAdminRoute
   '/painel/': typeof AuthenticatedPainelIndexRoute
+  '/api/public/hooks/resolver-tick': typeof ApiPublicHooksResolverTickRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -96,6 +104,7 @@ export interface FileRoutesByTo {
   '/painel/professor': typeof AuthenticatedPainelProfessorRoute
   '/painel/super-admin': typeof AuthenticatedPainelSuperAdminRoute
   '/painel': typeof AuthenticatedPainelIndexRoute
+  '/api/public/hooks/resolver-tick': typeof ApiPublicHooksResolverTickRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -109,6 +118,7 @@ export interface FileRoutesById {
   '/_authenticated/painel/professor': typeof AuthenticatedPainelProfessorRoute
   '/_authenticated/painel/super-admin': typeof AuthenticatedPainelSuperAdminRoute
   '/_authenticated/painel/': typeof AuthenticatedPainelIndexRoute
+  '/api/public/hooks/resolver-tick': typeof ApiPublicHooksResolverTickRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/painel/professor'
     | '/painel/super-admin'
     | '/painel/'
+    | '/api/public/hooks/resolver-tick'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/painel/professor'
     | '/painel/super-admin'
     | '/painel'
+    | '/api/public/hooks/resolver-tick'
   id:
     | '__root__'
     | '/'
@@ -145,6 +157,7 @@ export interface FileRouteTypes {
     | '/_authenticated/painel/professor'
     | '/_authenticated/painel/super-admin'
     | '/_authenticated/painel/'
+    | '/api/public/hooks/resolver-tick'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -152,6 +165,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   EntrarHansaRoute: typeof EntrarHansaRoute
+  ApiPublicHooksResolverTickRoute: typeof ApiPublicHooksResolverTickRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -226,6 +240,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPainelAdminEscolarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/hooks/resolver-tick': {
+      id: '/api/public/hooks/resolver-tick'
+      path: '/api/public/hooks/resolver-tick'
+      fullPath: '/api/public/hooks/resolver-tick'
+      preLoaderRoute: typeof ApiPublicHooksResolverTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -255,6 +276,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   EntrarHansaRoute: EntrarHansaRoute,
+  ApiPublicHooksResolverTickRoute: ApiPublicHooksResolverTickRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

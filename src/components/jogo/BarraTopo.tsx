@@ -20,7 +20,9 @@ export function BarraTopo() {
   const {
     nomeEmpresa, acesso, setAcesso, modo, meu_lugar_real,
     ronda_indice, ronda_total, ronda_prazo, snapshotAtual, guardarNomePerfil,
-  } = useJogo();
+    competicao_id, equipa_id,
+  } = useJogo() as any;
+
   const navigate = useNavigate();
   const [defAberto, setDefAberto] = useState(false);
   const [nomePerfil, setNomePerfil] = useState("");

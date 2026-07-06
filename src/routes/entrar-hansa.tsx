@@ -112,7 +112,19 @@ function EntrarHansa() {
           </p>
         )}
 
-        <Link to="/" className="mt-10 text-xs text-paper/50 hover:text-paper">← Voltar</Link>
+        <div className="mt-10 flex w-full flex-col items-center gap-3">
+          <Link
+            to="/demo"
+            className="mono w-full rounded-md border border-gold/40 px-4 py-3 text-center text-xs uppercase tracking-widest text-paper hover:bg-gold/10"
+          >
+            Ver demo · Tutorial
+          </Link>
+          <p className="text-[11px] text-paper/50">
+            Explora o Kontor sem precisar de código — nada é gravado.
+          </p>
+        </div>
+
+        <Link to="/" className="mt-8 text-xs text-paper/50 hover:text-paper">← Voltar</Link>
       </main>
     </div>
   );

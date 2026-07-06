@@ -213,6 +213,20 @@ Deno.serve(async (req) => {
     const buffer: BufItem[] = [];
     const apeloPorMercado = new Map<string, BufItem[]>();
 
+    // Custos de pesquisa (acoes_informacao.custo) desta ronda por equipa.
+    const custosPesquisaPorEquipa = new Map<string, number>();
+    {
+      const { data: acoesRonda } = await sb
+        .from("acoes_informacao")
+        .select("equipa_id, custo")
+        .eq("ronda_id", ronda.id);
+      for (const a of (acoesRonda ?? []) as { equipa_id: string; custo: number | null }[]) {
+        const v = Number(a.custo ?? 0);
+        if (!v) continue;
+        custosPesquisaPorEquipa.set(a.equipa_id, (custosPesquisaPorEquipa.get(a.equipa_id) ?? 0) + v);
+      }
+    }
+
     for (const eq of equipasArr) {
       const estado = await estadoPrevio(eq.id);
       const decisoesEq = decisoesPorEquipa.get(eq.id) ?? [];

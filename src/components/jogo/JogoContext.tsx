@@ -117,9 +117,16 @@ type Estado = DadosJogo & {
   // Pesquisa
   usarPesquisa: (
     lugar: Lugar,
-    opts: { tipo: string; nivel: "L1" | "L2" | "L3"; custo: number },
+    opts: { tipo: string; nivel?: "L1" | "L2" | "L3"; custo?: number },
   ) => Promise<void>;
   pesquisaUsada: (lugar: Lugar) => boolean;
+
+  // CHRO — ações pendentes (aplicadas no submit)
+  chroAcoesPendentes: (colaborador_id: string) => AcaoPessoa | null;
+  adicionarAcaoPessoa: (a: AcaoPessoa) => void;
+  removerAcaoPessoa: (colaborador_id: string) => void;
+  adicionarContratacao: (c: Contratacao) => void;
+  removerContratacao: (candidato_id: string) => void;
 
   // Empresa / perfil
   nomeEmpresa: string;

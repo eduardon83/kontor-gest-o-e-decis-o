@@ -7,8 +7,10 @@ import {
   atualizarNomeEmpresa as atualizarNomeEmpresaFn,
   atualizarNomePerfil as atualizarNomePerfilFn,
 } from "@/lib/jogo.functions";
+import { carregarChro as carregarChroFn } from "@/lib/chro.functions";
 import type { Lugar, Acesso, SalaId } from "@/lib/jogo/tipos";
 import { LUGARES } from "@/lib/jogo/tipos";
+import type { AcaoPessoa, Contratacao } from "@/lib/jogo/schema-decisoes";
 
 /* ============ Tipos partilhados ============ */
 export type Snapshot = Record<string, unknown> & {

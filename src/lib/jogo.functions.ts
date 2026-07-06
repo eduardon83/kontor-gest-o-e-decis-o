@@ -153,7 +153,8 @@ export const executarAcaoInfo = createServerFn({ method: "POST" })
         equipa_id: z.string().uuid(),
         lugar: z.enum(LUGARES),
         tipo: z.string().min(1).max(48),
-        nivel: z.string().min(1).max(24).optional(),
+        nivel: z.enum(["L1", "L2", "L3"]).optional(),
+        custo: z.number().int().min(0).max(1_000_000).optional(),
       })
       .parse(raw),
   )
@@ -178,6 +179,7 @@ export const executarAcaoInfo = createServerFn({ method: "POST" })
         lugar: data.lugar,
         tipo: data.tipo,
         nivel: data.nivel ?? null,
+        custo: data.custo ?? null,
         criado_por: userId,
       })
       .select("id")

@@ -706,6 +706,15 @@ Deno.serve(async (req) => {
     if (snapshotsInsert.length) await sb.from("estado_empresa").insert(snapshotsInsert);
     if (eventosInsert.length) await sb.from("eventos").insert(eventosInsert);
     if (resultadosInsert.length) await sb.from("resultados").insert(resultadosInsert);
+
+    // Aplicar alterações a colaboradores (despedimentos, promoções, novos).
+    for (const u of colabsUpdatesGlobal) {
+      await sb.from("colaboradores").update(u.patch).eq("id", u.id);
+    }
+    if (colabsInsertsGlobal.length) {
+      await sb.from("colaboradores").insert(colabsInsertsGlobal);
+    }
+
     if (auditoriaInsert.length) await sb.from("log_auditoria").insert(auditoriaInsert);
 
     // Posições por mercado.

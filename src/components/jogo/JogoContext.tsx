@@ -113,21 +113,41 @@ type Estado = DadosJogo & {
 const Ctx = createContext<Estado | null>(null);
 
 function estadoVazio(): DadosJogo {
+  // Estado pré-semeado para o modo demo/tutorial: turno 5 de 16, com histórico
+  // coerente com HISTORICO_TURNOS / KPIS (últimos 4 turnos concluídos).
   return {
     modo: "demo",
     competicao_id: null,
-    competicao_nome: "Demo",
+    competicao_nome: "Kontor — Demo jogável",
     equipa_id: null,
     equipa_nome: "Marnera & Filhos",
     meu_lugar_real: null,
     ronda_id: null,
-    ronda_indice: 1,
-    ronda_total: 10,
+    ronda_indice: 5,
+    ronda_total: 16,
     ronda_prazo: null,
-    snapshotAtual: null,
+    snapshotAtual: {
+      caixa: 148_500,
+      valor: 612_300,
+      turno: 4,
+      divida: 72_000,
+      marca: 42,
+      ativos: 8,
+      resultado: 46_800,
+      fase_economica: "Expansão moderada",
+      receita: 118_200,
+      custos: 71_400,
+      ebitda: 46_800,
+      moral: 68,
+      quota: 18.4,
+    },
     snapshots: [],
     colaboradores: [],
-    rivais: [],
+    rivais: [
+      { equipa_id: "demo-a", nome: "Nordis", valor: 704_200 },
+      { equipa_id: "demo-b", nome: "Torvel", valor: 588_100 },
+      { equipa_id: "demo-c", nome: "Lumiar", valor: 462_900 },
+    ],
     decisoes: {},
     pesquisas: {},
   };

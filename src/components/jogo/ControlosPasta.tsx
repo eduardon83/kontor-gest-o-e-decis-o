@@ -9,7 +9,7 @@ const INICIAL: Record<Lugar, Record<string, unknown>> = {
   CFO: { markup: 0.35, emprestimo: 0, amortizar: 0, capex: 0, id_orcamento: 0, tesouraria: "equilibrado", usar_prejuizos: false, seguro: false },
   COO: { producao: { cadeira: 300, mesa: 150, armario: 80 }, tier: "standard", comprar_maquinas: 0, ritmo: "normal", subcontratacao: 0, id_modo: "interno" },
   CMO: { preco: { cadeira: 89, mesa: 249, armario: 399 }, marketing: 5000, canal: "grosso", forca_vendas: 4, pesquisa_mercado: 0 },
-  CHRO: { salario: 1.0, formacao: 0, bonus: 0, contratar: 0, despedir: 0, promover_supervisor: false, contratar_investigadores: 0 },
+  CHRO: { salario: 1.0, formacao: 0, bonus: 0, acoes_pessoas: [], contratacoes: [] },
 };
 
 export function ControlosPasta({ lugar }: { lugar: Lugar }) {

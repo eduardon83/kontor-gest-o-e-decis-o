@@ -521,9 +521,11 @@ Deno.serve(async (req) => {
       const wages = b.salarios; // já com ratio salarial aplicado
       const rent = 1500;
       const dep = (b.estado.maquinas + b.comprarMaquinas) * 1000;
+      const custoPesquisas = custosPesquisaPorEquipa.get(b.equipa_id) ?? 0;
       const fixed = wages + rent + dep + b.formacao + b.marketing
         + b.forca_vendas * 2500 + Number(b.dec.CMO?.pesquisa_mercado ?? 0)
-        + b.bonus;
+        + b.bonus
+        + custoPesquisas;
       const juro = macro.juro;
       const interest = (b.estado.divida + b.empréstimo_novo) * ((juro + 3.6) / 100) / 12;
       const pre = receita - prodCost - fixed - b.rdCost - interest;

@@ -16,6 +16,7 @@ import { clamp, stream } from "../_shared/prng.ts";
 import {
   CONST, PRECEDENCIA, PRODUTOS, TIERS, type Produto, type Tier,
 } from "../_shared/constants.ts";
+import { gerarPoolCandidatos } from "../_shared/candidatos.ts";
 import {
   ID_INICIAL, detetarPerfil, mediaJanela,
   proximoElegivel, type IdEstado, type JanelaDec, type Profile,

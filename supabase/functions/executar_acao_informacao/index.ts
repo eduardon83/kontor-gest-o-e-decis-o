@@ -157,8 +157,11 @@ Deno.serve(async (req) => {
         throw new Error(`tipo desconhecido: ${acao.tipo}`);
     }
 
+    const confFinal = acao.tipo === "dialogo"
+      ? 1
+      : conf;
     const { error: eU } = await sb.from("acoes_informacao")
-      .update({ resultado, confianca: conf }).eq("id", acao_id);
+      .update({ resultado, confianca: confFinal }).eq("id", acao_id);
     if (eU) throw new Error(eU.message);
 
     return json({ ok: true, resultado });

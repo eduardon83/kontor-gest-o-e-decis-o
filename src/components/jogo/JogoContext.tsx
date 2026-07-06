@@ -553,13 +553,18 @@ export function JogoProvider({
       submeterLugar,
       usarPesquisa,
       pesquisaUsada,
+      chroAcoesPendentes,
+      adicionarAcaoPessoa,
+      removerAcaoPessoa,
+      adicionarContratacao,
+      removerContratacao,
       nomeEmpresa: dados.equipa_nome,
       guardarNomeEmpresa,
       guardarNomePerfil,
       recarregar: carregar,
       aCarregar,
     }),
-    [dados, acesso, lugarVisto, sala, podeEditar, submetidos, rascunho, atualizarRascunho, submeterLugar, usarPesquisa, pesquisaUsada, guardarNomeEmpresa, guardarNomePerfil, carregar, aCarregar],
+    [dados, acesso, lugarVisto, sala, podeEditar, submetidos, rascunho, atualizarRascunho, submeterLugar, usarPesquisa, pesquisaUsada, chroAcoesPendentes, adicionarAcaoPessoa, removerAcaoPessoa, adicionarContratacao, removerContratacao, guardarNomeEmpresa, guardarNomePerfil, carregar, aCarregar],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -288,19 +288,21 @@ export function JogoProvider({
       // Pesquisas (todas as da equipa)
       const { data: pesqLinhas } = await supabase
         .from("acoes_informacao")
-        .select("id, tipo, nivel, confianca, resultado, criado_em, lugar")
+        .select("id, tipo, nivel, custo, confianca, resultado, criado_em, lugar, ronda_id, rondas(indice)")
         .eq("equipa_id", equipaId)
         .order("criado_em", { ascending: false });
       const pesquisas: Partial<Record<Lugar, PesquisaRegisto[]>> = {};
-      for (const p of pesqLinhas ?? []) {
+      for (const p of (pesqLinhas ?? []) as any[]) {
         const lg = p.lugar as Lugar;
         (pesquisas[lg] ||= []).push({
           id: p.id,
           tipo: p.tipo,
           nivel: p.nivel,
+          custo: p.custo == null ? null : Number(p.custo),
           confianca: p.confianca == null ? null : Number(p.confianca),
           resultado: (p.resultado ?? null) as Record<string, unknown> | null,
           criado_em: p.criado_em,
+          ronda_indice: p.rondas?.indice ?? null,
           lugar: lg,
         });
       }

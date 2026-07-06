@@ -200,6 +200,7 @@ export function JogoProvider({
   const fnPesquisa = useServerFn(executarAcaoInfo);
   const fnNomeEmpresa = useServerFn(atualizarNomeEmpresaFn);
   const fnNomePerfil = useServerFn(atualizarNomePerfilFn);
+  const fnCarregarChro = useServerFn(carregarChroFn);
 
   const carregar = useCallback(async () => {
     if (!equipaId) {

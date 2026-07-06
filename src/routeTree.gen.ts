@@ -13,6 +13,7 @@ import { Route as EntrarHansaRouteImport } from './routes/entrar-hansa'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthConfirmadoRouteImport } from './routes/auth.confirmado'
 import { Route as AuthenticatedNovaHansaRouteImport } from './routes/_authenticated/nova-hansa'
 import { Route as AuthenticatedPainelIndexRouteImport } from './routes/_authenticated/painel.index'
 import { Route as AuthenticatedPainelSuperAdminRouteImport } from './routes/_authenticated/painel.super-admin'
@@ -41,6 +42,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthConfirmadoRoute = AuthConfirmadoRouteImport.update({
+  id: '/confirmado',
+  path: '/confirmado',
+  getParentRoute: () => AuthRoute,
 } as any)
 const AuthenticatedNovaHansaRoute = AuthenticatedNovaHansaRouteImport.update({
   id: '/nova-hansa',
@@ -98,9 +104,10 @@ const AuthenticatedPainelProfessorCompeticaoIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/entrar-hansa': typeof EntrarHansaRoute
   '/nova-hansa': typeof AuthenticatedNovaHansaRoute
+  '/auth/confirmado': typeof AuthConfirmadoRoute
   '/painel/admin-escolar': typeof AuthenticatedPainelAdminEscolarRoute
   '/painel/jogador': typeof AuthenticatedPainelJogadorRouteWithChildren
   '/painel/professor': typeof AuthenticatedPainelProfessorRouteWithChildren
@@ -112,9 +119,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/entrar-hansa': typeof EntrarHansaRoute
   '/nova-hansa': typeof AuthenticatedNovaHansaRoute
+  '/auth/confirmado': typeof AuthConfirmadoRoute
   '/painel/admin-escolar': typeof AuthenticatedPainelAdminEscolarRoute
   '/painel/jogador': typeof AuthenticatedPainelJogadorRouteWithChildren
   '/painel/professor': typeof AuthenticatedPainelProfessorRouteWithChildren
@@ -128,9 +136,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/entrar-hansa': typeof EntrarHansaRoute
   '/_authenticated/nova-hansa': typeof AuthenticatedNovaHansaRoute
+  '/auth/confirmado': typeof AuthConfirmadoRoute
   '/_authenticated/painel/admin-escolar': typeof AuthenticatedPainelAdminEscolarRoute
   '/_authenticated/painel/jogador': typeof AuthenticatedPainelJogadorRouteWithChildren
   '/_authenticated/painel/professor': typeof AuthenticatedPainelProfessorRouteWithChildren
@@ -147,6 +156,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/entrar-hansa'
     | '/nova-hansa'
+    | '/auth/confirmado'
     | '/painel/admin-escolar'
     | '/painel/jogador'
     | '/painel/professor'
@@ -161,6 +171,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/entrar-hansa'
     | '/nova-hansa'
+    | '/auth/confirmado'
     | '/painel/admin-escolar'
     | '/painel/jogador'
     | '/painel/professor'
@@ -176,6 +187,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/entrar-hansa'
     | '/_authenticated/nova-hansa'
+    | '/auth/confirmado'
     | '/_authenticated/painel/admin-escolar'
     | '/_authenticated/painel/jogador'
     | '/_authenticated/painel/professor'
@@ -189,7 +201,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  AuthRoute: typeof AuthRoute
+  AuthRoute: typeof AuthRouteWithChildren
   EntrarHansaRoute: typeof EntrarHansaRoute
   ApiPublicHooksResolverTickRoute: typeof ApiPublicHooksResolverTickRoute
 }
@@ -223,6 +235,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/auth/confirmado': {
+      id: '/auth/confirmado'
+      path: '/confirmado'
+      fullPath: '/auth/confirmado'
+      preLoaderRoute: typeof AuthConfirmadoRouteImport
+      parentRoute: typeof AuthRoute
     }
     '/_authenticated/nova-hansa': {
       id: '/_authenticated/nova-hansa'
@@ -342,10 +361,20 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface AuthRouteChildren {
+  AuthConfirmadoRoute: typeof AuthConfirmadoRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthConfirmadoRoute: AuthConfirmadoRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  AuthRoute: AuthRoute,
+  AuthRoute: AuthRouteWithChildren,
   EntrarHansaRoute: EntrarHansaRoute,
   ApiPublicHooksResolverTickRoute: ApiPublicHooksResolverTickRoute,
 }

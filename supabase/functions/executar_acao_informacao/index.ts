@@ -3,6 +3,7 @@
 import { admin, corsHeaders, json } from "../_shared/supabase.ts";
 import { clamp, gaussian, stream } from "../_shared/prng.ts";
 import { PRODUTOS, type Produto } from "../_shared/constants.ts";
+import { escolherRepresentante } from "../_shared/candidatos.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });

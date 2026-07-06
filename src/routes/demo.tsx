@@ -11,7 +11,7 @@ import { Laboratorio } from "@/components/jogo/salas/Laboratorio";
 import { Ruas } from "@/components/jogo/salas/Ruas";
 import { Jornal } from "@/components/jogo/salas/Jornal";
 import { TemaDaEquipa } from "@/components/tema/TemaDaEquipa";
-import { SALAS, LUGARES, type SalaId, type Lugar } from "@/lib/jogo/tipos";
+import type { SalaId, Lugar } from "@/lib/jogo/tipos";
 
 export const Route = createFileRoute("/demo")({
   head: () => ({

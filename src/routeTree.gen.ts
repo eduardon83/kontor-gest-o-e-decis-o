@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as EntrarHansaRouteImport } from './routes/entrar-hansa'
+import { Route as DemoRouteImport } from './routes/demo'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -27,6 +28,11 @@ import { Route as AuthenticatedPainelProfessorCompeticaoIdRouteImport } from './
 const EntrarHansaRoute = EntrarHansaRouteImport.update({
   id: '/entrar-hansa',
   path: '/entrar-hansa',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoRoute = DemoRouteImport.update({
+  id: '/demo',
+  path: '/demo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -105,6 +111,7 @@ const AuthenticatedPainelProfessorCompeticaoIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
+  '/demo': typeof DemoRoute
   '/entrar-hansa': typeof EntrarHansaRoute
   '/nova-hansa': typeof AuthenticatedNovaHansaRoute
   '/auth/confirmado': typeof AuthConfirmadoRoute
@@ -120,6 +127,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
+  '/demo': typeof DemoRoute
   '/entrar-hansa': typeof EntrarHansaRoute
   '/nova-hansa': typeof AuthenticatedNovaHansaRoute
   '/auth/confirmado': typeof AuthConfirmadoRoute
@@ -137,6 +145,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
+  '/demo': typeof DemoRoute
   '/entrar-hansa': typeof EntrarHansaRoute
   '/_authenticated/nova-hansa': typeof AuthenticatedNovaHansaRoute
   '/auth/confirmado': typeof AuthConfirmadoRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/demo'
     | '/entrar-hansa'
     | '/nova-hansa'
     | '/auth/confirmado'
@@ -169,6 +179,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/demo'
     | '/entrar-hansa'
     | '/nova-hansa'
     | '/auth/confirmado'
@@ -185,6 +196,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/demo'
     | '/entrar-hansa'
     | '/_authenticated/nova-hansa'
     | '/auth/confirmado'
@@ -202,6 +214,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
+  DemoRoute: typeof DemoRoute
   EntrarHansaRoute: typeof EntrarHansaRoute
   ApiPublicHooksResolverTickRoute: typeof ApiPublicHooksResolverTickRoute
 }
@@ -213,6 +226,13 @@ declare module '@tanstack/react-router' {
       path: '/entrar-hansa'
       fullPath: '/entrar-hansa'
       preLoaderRoute: typeof EntrarHansaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo': {
+      id: '/demo'
+      path: '/demo'
+      fullPath: '/demo'
+      preLoaderRoute: typeof DemoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -375,6 +395,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
+  DemoRoute: DemoRoute,
   EntrarHansaRoute: EntrarHansaRoute,
   ApiPublicHooksResolverTickRoute: ApiPublicHooksResolverTickRoute,
 }

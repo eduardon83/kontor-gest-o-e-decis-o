@@ -32,14 +32,22 @@ function PainelProfessor() {
       titulo="Os seus jogos de Hansa"
       descricao="Prepare mercados, forme equipas, avance turnos e acompanhe decisões."
     >
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-serif text-xl text-foreground">Hansas ativas</h2>
-        <Link
-          to="/nova-hansa"
-          className="rounded-md bg-gold px-4 py-2 text-sm font-medium text-navy transition-colors hover:brightness-95"
-        >
-          + Nova Hansa
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to="/demo"
+            className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-gold"
+          >
+            Ver demo jogável
+          </Link>
+          <Link
+            to="/nova-hansa"
+            className="rounded-md bg-gold px-4 py-2 text-sm font-medium text-navy transition-colors hover:brightness-95"
+          >
+            + Nova Hansa
+          </Link>
+        </div>
       </div>
 
       {isLoading && <p className="font-mono text-xs text-slate">A carregar…</p>}

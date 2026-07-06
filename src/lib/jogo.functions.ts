@@ -179,7 +179,7 @@ export const executarAcaoInfo = createServerFn({ method: "POST" })
         lugar: data.lugar,
         tipo: data.tipo,
         nivel: data.nivel ?? null,
-        custo: data.custo ?? null,
+        custo: data.custo ?? undefined,
         criado_por: userId,
       })
       .select("id")

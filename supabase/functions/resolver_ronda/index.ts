@@ -866,7 +866,7 @@ function gerarDecisoesIA(
     },
     CHRO: {
       salario, formacao: perfil === "foco_qualidade" ? 1500 : 500, bonus: 0,
-      contratar: 0, despedir: 0, promover_supervisor: false, contratar_investigadores: 0,
+      acoes_pessoas: [], contratacoes: [],
     },
   };
 }

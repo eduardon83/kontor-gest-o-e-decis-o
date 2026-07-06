@@ -370,10 +370,20 @@ export function JogoProvider({
   );
 
   const usarPesquisa = useCallback(
-    async (lugar: Lugar, tipo: string, nivel?: string) => {
+    async (
+      lugar: Lugar,
+      opts: { tipo: string; nivel: "L1" | "L2" | "L3"; custo: number },
+    ) => {
       if (dados.modo !== "real" || !dados.ronda_id || !dados.equipa_id) return;
       await fnPesquisa({
-        data: { ronda_id: dados.ronda_id, equipa_id: dados.equipa_id, lugar, tipo, nivel },
+        data: {
+          ronda_id: dados.ronda_id,
+          equipa_id: dados.equipa_id,
+          lugar,
+          tipo: opts.tipo,
+          nivel: opts.nivel,
+          custo: opts.custo,
+        },
       });
       await carregar();
     },

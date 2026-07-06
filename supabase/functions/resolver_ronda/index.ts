@@ -213,6 +213,20 @@ Deno.serve(async (req) => {
     const buffer: BufItem[] = [];
     const apeloPorMercado = new Map<string, BufItem[]>();
 
+    // Custos de pesquisa (acoes_informacao.custo) desta ronda por equipa.
+    const custosPesquisaPorEquipa = new Map<string, number>();
+    {
+      const { data: acoesRonda } = await sb
+        .from("acoes_informacao")
+        .select("equipa_id, custo")
+        .eq("ronda_id", ronda.id);
+      for (const a of (acoesRonda ?? []) as { equipa_id: string; custo: number | null }[]) {
+        const v = Number(a.custo ?? 0);
+        if (!v) continue;
+        custosPesquisaPorEquipa.set(a.equipa_id, (custosPesquisaPorEquipa.get(a.equipa_id) ?? 0) + v);
+      }
+    }
+
     for (const eq of equipasArr) {
       const estado = await estadoPrevio(eq.id);
       const decisoesEq = decisoesPorEquipa.get(eq.id) ?? [];
@@ -507,9 +521,11 @@ Deno.serve(async (req) => {
       const wages = b.salarios; // já com ratio salarial aplicado
       const rent = 1500;
       const dep = (b.estado.maquinas + b.comprarMaquinas) * 1000;
+      const custoPesquisas = custosPesquisaPorEquipa.get(b.equipa_id) ?? 0;
       const fixed = wages + rent + dep + b.formacao + b.marketing
         + b.forca_vendas * 2500 + Number(b.dec.CMO?.pesquisa_mercado ?? 0)
-        + b.bonus;
+        + b.bonus
+        + custoPesquisas;
       const juro = macro.juro;
       const interest = (b.estado.divida + b.empréstimo_novo) * ((juro + 3.6) / 100) / 12;
       const pre = receita - prodCost - fixed - b.rdCost - interest;

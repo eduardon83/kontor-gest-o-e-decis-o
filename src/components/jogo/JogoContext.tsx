@@ -57,9 +57,11 @@ export type PesquisaRegisto = {
   id: string;
   tipo: string;
   nivel: string | null;
+  custo: number | null;
   confianca: number | null;
   resultado: Record<string, unknown> | null;
   criado_em: string;
+  ronda_indice: number | null;
   lugar: Lugar;
 };
 
@@ -98,7 +100,10 @@ type Estado = DadosJogo & {
   submeterLugar: (lugar: Lugar) => Promise<void>;
 
   // Pesquisa
-  usarPesquisa: (lugar: Lugar, tipo: string, nivel?: string) => Promise<void>;
+  usarPesquisa: (
+    lugar: Lugar,
+    opts: { tipo: string; nivel: "L1" | "L2" | "L3"; custo: number },
+  ) => Promise<void>;
   pesquisaUsada: (lugar: Lugar) => boolean;
 
   // Empresa / perfil
@@ -286,19 +291,21 @@ export function JogoProvider({
       // Pesquisas (todas as da equipa)
       const { data: pesqLinhas } = await supabase
         .from("acoes_informacao")
-        .select("id, tipo, nivel, confianca, resultado, criado_em, lugar")
+        .select("id, tipo, nivel, custo, confianca, resultado, criado_em, lugar, ronda_id, rondas(indice)")
         .eq("equipa_id", equipaId)
         .order("criado_em", { ascending: false });
       const pesquisas: Partial<Record<Lugar, PesquisaRegisto[]>> = {};
-      for (const p of pesqLinhas ?? []) {
+      for (const p of (pesqLinhas ?? []) as any[]) {
         const lg = p.lugar as Lugar;
         (pesquisas[lg] ||= []).push({
           id: p.id,
           tipo: p.tipo,
           nivel: p.nivel,
+          custo: p.custo == null ? null : Number(p.custo),
           confianca: p.confianca == null ? null : Number(p.confianca),
           resultado: (p.resultado ?? null) as Record<string, unknown> | null,
           criado_em: p.criado_em,
+          ronda_indice: p.rondas?.indice ?? null,
           lugar: lg,
         });
       }
@@ -363,10 +370,20 @@ export function JogoProvider({
   );
 
   const usarPesquisa = useCallback(
-    async (lugar: Lugar, tipo: string, nivel?: string) => {
+    async (
+      lugar: Lugar,
+      opts: { tipo: string; nivel: "L1" | "L2" | "L3"; custo: number },
+    ) => {
       if (dados.modo !== "real" || !dados.ronda_id || !dados.equipa_id) return;
       await fnPesquisa({
-        data: { ronda_id: dados.ronda_id, equipa_id: dados.equipa_id, lugar, tipo, nivel },
+        data: {
+          ronda_id: dados.ronda_id,
+          equipa_id: dados.equipa_id,
+          lugar,
+          tipo: opts.tipo,
+          nivel: opts.nivel,
+          custo: opts.custo,
+        },
       });
       await carregar();
     },

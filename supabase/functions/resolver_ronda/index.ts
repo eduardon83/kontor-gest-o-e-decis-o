@@ -459,6 +459,8 @@ Deno.serve(async (req) => {
     const eventosInsert: Record<string, unknown>[] = [];
     const resultadosInsert: Record<string, unknown>[] = [];
     const auditoriaInsert: Record<string, unknown>[] = [];
+    const colabsUpdatesGlobal: { id: string; patch: Record<string, unknown> }[] = [];
+    const colabsInsertsGlobal: Record<string, unknown>[] = [];
 
     for (const b of buffer) {
       const rEq = stream(Number(comp.seed) + ronda.indice * 104729, `equipa:${b.equipa_id}`);

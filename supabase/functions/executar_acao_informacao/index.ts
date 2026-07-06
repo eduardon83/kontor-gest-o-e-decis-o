@@ -3,6 +3,7 @@
 import { admin, corsHeaders, json } from "../_shared/supabase.ts";
 import { clamp, gaussian, stream } from "../_shared/prng.ts";
 import { PRODUTOS, type Produto } from "../_shared/constants.ts";
+import { escolherRepresentante } from "../_shared/candidatos.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -110,21 +111,37 @@ Deno.serve(async (req) => {
         break;
       }
       case "dialogo": {
-        // Sonda um colaborador aleatório
+        // Sem níveis — representante determinístico do turno.
         const { data: cols } = await sb.from("colaboradores")
-          .select("id, arquetipo, motivacao, stress_individual, competencia, necessidades")
-          .eq("equipa_id", acao.equipa_id);
-        const alvo = (cols ?? [])[Math.floor(rr() * Math.max(1, (cols ?? []).length))];
+          .select("id, arquetipo, motivacao, stress_individual, competencia, necessidades, papel_org, salario_mult")
+          .eq("equipa_id", acao.equipa_id)
+          .eq("ativo", true);
+        const ids = (cols ?? []).map((c) => c.id);
+        const repId = escolherRepresentante(
+          { competicaoSeed: Number(comp.seed), rondaIndice: Number(ronda.indice), equipaId: acao.equipa_id },
+          ids,
+        );
+        const alvo = (cols ?? []).find((c) => c.id === repId) ?? null;
+        // Clima organizacional agregado (curto).
+        const media = (arr: number[]) => arr.length ? arr.reduce((s, x) => s + Number(x), 0) / arr.length : 0;
+        const clima = {
+          moral_media: Math.round(media((cols ?? []).map((c) => Number(c.motivacao)))),
+          stress_medio: Math.round(media((cols ?? []).map((c) => Number(c.stress_individual)))),
+          n: (cols ?? []).length,
+        };
+        // Sem ruído — a "leitura rica" é confiança 1.
         resultado = alvo ? {
-          confianca: conf,
-          colaborador: {
-            id: alvo.id, arquetipo: alvo.arquetipo,
-            motivacao: clamp(ruido(alvo.motivacao), 0, 100),
-            stress: clamp(ruido(alvo.stress_individual), 0, 100),
-            competencia: clamp(ruido(alvo.competencia), 0, 100),
+          confianca: 1,
+          representante: {
+            id: alvo.id, arquetipo: alvo.arquetipo, papel_org: alvo.papel_org,
+            moral: clamp(Number(alvo.motivacao), 0, 100),
+            stress: clamp(Number(alvo.stress_individual), 0, 100),
+            competencia: clamp(Number(alvo.competencia), 0, 100),
             necessidades: alvo.necessidades,
+            salario_mult: Number(alvo.salario_mult ?? 1),
           },
-        } : { confianca: conf, colaborador: null };
+          clima,
+        } : { confianca: 1, representante: null, clima };
         break;
       }
       case "analise_id": {
@@ -140,8 +157,11 @@ Deno.serve(async (req) => {
         throw new Error(`tipo desconhecido: ${acao.tipo}`);
     }
 
+    const confFinal = acao.tipo === "dialogo"
+      ? 1
+      : conf;
     const { error: eU } = await sb.from("acoes_informacao")
-      .update({ resultado, confianca: conf }).eq("id", acao_id);
+      .update({ resultado, confianca: confFinal }).eq("id", acao_id);
     if (eU) throw new Error(eU.message);
 
     return json({ ok: true, resultado });

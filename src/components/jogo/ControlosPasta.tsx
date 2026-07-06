@@ -9,7 +9,7 @@ const INICIAL: Record<Lugar, Record<string, unknown>> = {
   CFO: { markup: 0.35, emprestimo: 0, amortizar: 0, capex: 0, id_orcamento: 0, tesouraria: "equilibrado", usar_prejuizos: false, seguro: false },
   COO: { producao: { cadeira: 300, mesa: 150, armario: 80 }, tier: "standard", comprar_maquinas: 0, ritmo: "normal", subcontratacao: 0, id_modo: "interno" },
   CMO: { preco: { cadeira: 89, mesa: 249, armario: 399 }, marketing: 5000, canal: "grosso", forca_vendas: 4, pesquisa_mercado: 0 },
-  CHRO: { salario: 1.0, formacao: 0, bonus: 0, contratar: 0, despedir: 0, promover_supervisor: false, contratar_investigadores: 0 },
+  CHRO: { salario: 1.0, formacao: 0, bonus: 0, acoes_pessoas: [], contratacoes: [] },
 };
 
 export function ControlosPasta({ lugar }: { lugar: Lugar }) {
@@ -109,13 +109,12 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
 
         {lugar === "CHRO" && (
           <>
-            <Slider rotulo="Salário (× mercado)" v={valor.salario} min={0.7} max={1.6} step={0.05} onChange={(n) => up({ salario: n })} disabled={!editavel} sufixo={(v) => v.toFixed(2)} />
+            <Slider rotulo="Salário global (× mercado)" v={valor.salario} min={0.7} max={1.6} step={0.05} onChange={(n) => up({ salario: n })} disabled={!editavel} sufixo={(v) => v.toFixed(2)} />
             <NumericoField rotulo="Formação (€)" v={valor.formacao} min={0} max={40_000} step={500} onChange={(n) => up({ formacao: n })} disabled={!editavel} />
             <NumericoField rotulo="Bónus (€)" v={valor.bonus} min={0} max={80_000} step={500} onChange={(n) => up({ bonus: n })} disabled={!editavel} />
-            <NumericoField rotulo="Contratar" v={valor.contratar} min={0} max={20} step={1} onChange={(n) => up({ contratar: n })} disabled={!editavel} />
-            <NumericoField rotulo="Despedir" v={valor.despedir} min={0} max={20} step={1} onChange={(n) => up({ despedir: n })} disabled={!editavel} />
-            <Toggle rotulo="Promover supervisor" v={!!valor.promover_supervisor} onChange={(t) => up({ promover_supervisor: t })} disabled={!editavel} />
-            <NumericoField rotulo="Contratar investigadores" v={valor.contratar_investigadores} min={0} max={10} step={1} onChange={(n) => up({ contratar_investigadores: n })} disabled={!editavel} />
+            <p className="mono rounded-sm border border-dashed border-gold/40 bg-gold/5 p-3 text-[10px] uppercase tracking-widest text-muted-foreground">
+              Promoções, despedimentos e contratações fazem-se no roster ao lado — cada pessoa tem o seu menu.
+            </p>
           </>
         )}
 

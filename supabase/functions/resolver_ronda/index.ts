@@ -9,13 +9,14 @@
 //           id_modo:'interno'|'licenca' }
 //   CMO:  { preco:{cadeira,mesa,armario}, marketing:number,
 //           canal:'grosso'|'direto'|'exportacao', forca_vendas:number, pesquisa_mercado:number }
-//   CHRO: { salario:number, formacao:number, bonus:number, contratar:number,
-//           despedir:number, promover_supervisor:bool, contratar_investigadores:number }
+//   CHRO: { salario:number, formacao:number, bonus:number,
+//           acoes_pessoas:[{colaborador_id,tipo}], contratacoes:[{candidato_id}] }
 import { admin, corsHeaders, json } from "../_shared/supabase.ts";
 import { clamp, stream } from "../_shared/prng.ts";
 import {
   CONST, PRECEDENCIA, PRODUTOS, TIERS, type Produto, type Tier,
 } from "../_shared/constants.ts";
+import { gerarPoolCandidatos } from "../_shared/candidatos.ts";
 import {
   ID_INICIAL, detetarPerfil, mediaJanela,
   proximoElegivel, type IdEstado, type JanelaDec, type Profile,
@@ -458,6 +459,8 @@ Deno.serve(async (req) => {
     const eventosInsert: Record<string, unknown>[] = [];
     const resultadosInsert: Record<string, unknown>[] = [];
     const auditoriaInsert: Record<string, unknown>[] = [];
+    const colabsUpdatesGlobal: { id: string; patch: Record<string, unknown> }[] = [];
+    const colabsInsertsGlobal: Record<string, unknown>[] = [];
 
     for (const b of buffer) {
       const rEq = stream(Number(comp.seed) + ronda.indice * 104729, `equipa:${b.equipa_id}`);
@@ -548,12 +551,94 @@ Deno.serve(async (req) => {
         ? b.estado.prejuizos_acum + Math.abs(pre)
         : (usarPrejuizos ? Math.max(0, b.estado.prejuizos_acum - baseTributavel) : b.estado.prejuizos_acum);
 
-      // Atualização de fatores (§9).
+      // ─── CHRO: ações sobre pessoas + contratações ─────────────────────────
+      const acoesPessoas = Array.isArray(b.dec.CHRO?.acoes_pessoas)
+        ? (b.dec.CHRO!.acoes_pessoas as { colaborador_id: string; tipo: string }[])
+        : [];
+      const contratacoes = Array.isArray(b.dec.CHRO?.contratacoes)
+        ? (b.dec.CHRO!.contratacoes as { candidato_id: string }[])
+        : [];
+      const meta = colabsPorEquipa.get(b.equipa_id) ?? [];
+      const metaAtivos = meta.filter((c) => c.ativo);
+      const SAL_MENSAL_BASE = CONST.custo_hora * 160; // ≈ 3318 €/mês
+
+      let indemnizacoes = 0;
+      let promoNum = 0;
+      const trabDelta = { trabalhadores: 0, supervisores: 0, gestor_linha: 0 };
+      for (const ap of acoesPessoas) {
+        const c = metaAtivos.find((x) => x.id === ap.colaborador_id);
+        if (!c) { b.auditoria.push({ acao: "pessoa_ignorada_nao_encontrada", payload: ap as never }); continue; }
+        if (ap.tipo === "despedir") {
+          const salMensal = SAL_MENSAL_BASE * Number(c.salario_mult ?? 1);
+          const ind = Math.round(salMensal * 2);
+          indemnizacoes += ind;
+          colabsUpdatesGlobal.push({ id: c.id, patch: { ativo: false } });
+          if (c.papel_org === "trabalhador") trabDelta.trabalhadores -= 1;
+          else if (c.papel_org === "supervisor") trabDelta.supervisores -= 1;
+          else if (c.papel_org === "gestor_linha") trabDelta.gestor_linha -= 1;
+          b.auditoria.push({ acao: "pessoa_despedida", payload: { id: c.id, papel_org: c.papel_org, indemnizacao: ind } });
+        } else if (ap.tipo === "promover_supervisor") {
+          if (c.papel_org !== "trabalhador") { b.auditoria.push({ acao: "promo_invalida", payload: ap as never }); continue; }
+          colabsUpdatesGlobal.push({ id: c.id, patch: {
+            papel_org: "supervisor", salario_mult: 1.4,
+            motivacao: clamp(Number(c.motivacao) + 5, 0, 100),
+          } });
+          trabDelta.trabalhadores -= 1; trabDelta.supervisores += 1;
+          promoNum++;
+          b.auditoria.push({ acao: "pessoa_promovida", payload: { id: c.id, novo: "supervisor", salario_mult: 1.4 } });
+        } else if (ap.tipo === "promover_chefe_linha") {
+          if (c.papel_org !== "supervisor") { b.auditoria.push({ acao: "promo_invalida", payload: ap as never }); continue; }
+          colabsUpdatesGlobal.push({ id: c.id, patch: {
+            papel_org: "gestor_linha", salario_mult: 2.0,
+            motivacao: clamp(Number(c.motivacao) + 5, 0, 100),
+          } });
+          trabDelta.supervisores -= 1; trabDelta.gestor_linha += 1;
+          promoNum++;
+          b.auditoria.push({ acao: "pessoa_promovida", payload: { id: c.id, novo: "gestor_linha", salario_mult: 2.0 } });
+        } else if (ap.tipo === "promover_merito") {
+          const novoMult = Number((Number(c.salario_mult ?? 1) * 1.12).toFixed(3));
+          colabsUpdatesGlobal.push({ id: c.id, patch: {
+            salario_mult: novoMult,
+            motivacao: clamp(Number(c.motivacao) + 5, 0, 100),
+          } });
+          promoNum++;
+          b.auditoria.push({ acao: "promocao_merito", payload: { id: c.id, salario_mult: novoMult } });
+        }
+      }
+
+      // Regenerar o pool determinístico para validar contratações.
+      const pool = gerarPoolCandidatos({
+        competicaoSeed: Number(comp.seed), rondaIndice: ronda.indice, equipaId: b.equipa_id,
+      });
+      for (const ct of contratacoes) {
+        const cand = pool.find((p) => p.id === ct.candidato_id);
+        if (!cand) { b.auditoria.push({ acao: "contratacao_invalida", payload: ct as never }); continue; }
+        colabsInsertsGlobal.push({
+          equipa_id: b.equipa_id,
+          papel_org: "trabalhador",
+          arquetipo: cand.arquetipo,
+          avatar_variante: cand.avatar_variante,
+          competencia: cand.atributos.competencia,
+          motivacao: cand.atributos.motivacao,
+          stress_individual: cand.atributos.stress,
+          resiliencia: cand.atributos.resiliencia,
+          aptidao_gestao: cand.atributos.aptidao_gestao,
+          produtividade_base: cand.atributos.produtividade,
+          antiguidade: 0,
+          salario_mult: cand.salario_mult,
+          necessidades: { ambicao: cand.atributos.ambicao },
+          ativo: true,
+        });
+        trabDelta.trabalhadores += 1;
+        b.auditoria.push({ acao: "contratacao", payload: { candidato_id: cand.id, salario_mult: cand.salario_mult } });
+      }
+
+      // Atualização de fatores (§9) — inclui bonus de moral por promoção.
       const dM = ((b.wageRatio >= 1.10 ? 6 : b.wageRatio >= 1.0 ? 1 : -8)
         + (b.ritmo === "horas_extra" ? -4 : 0)
         + (b.formacao > 0 ? 3 : 0)
         + (b.bonus > 0 ? 4 : 0)
-        + (b.dec.CHRO?.promover_supervisor ? 5 : 0)
+        + promoNum * 5
         + moralDelta
         + (b.ritmo === "ferias" ? 5 : 0));
       const dS = ((b.ritmo === "horas_extra" ? 10 : -6)
@@ -567,17 +652,17 @@ Deno.serve(async (req) => {
       const Sn = clamp(b.estado.stress_org + dS, 0, 100);
       const An = clamp(b.estado.ambicao_org + dA, 0, 100);
 
-      // Contratações/despedimentos e promoções (aplicados ao snapshot).
-      const contratar = Math.max(0, Math.floor(Number(b.dec.CHRO?.contratar ?? 0)));
-      const despedir = Math.max(0, Math.floor(Number(b.dec.CHRO?.despedir ?? 0)));
-      const promoverSup = Boolean(b.dec.CHRO?.promover_supervisor);
-      const contratarInvest = Math.max(0, Math.floor(Number(b.dec.CHRO?.contratar_investigadores ?? 0)));
-      const trabalhadoresNovo = Math.max(0, b.estado.trabalhadores + contratar - despedir - (promoverSup ? 1 : 0));
-      const supervisoresNovo = b.estado.supervisores + (promoverSup ? 1 : 0);
-      const investigadoresNovo = b.estado.investigadores + contratarInvest;
+      // Contagens finais (recomputadas a partir dos deltas — as escritas na
+      // tabela colaboradores fazem-se depois do loop).
+      const trabalhadoresNovo = Math.max(0, b.estado.trabalhadores + trabDelta.trabalhadores);
+      const supervisoresNovo = Math.max(0, b.estado.supervisores + trabDelta.supervisores);
+      const investigadoresNovo = b.estado.investigadores;
+
+      // Indemnizações saem da caixa depois do net.
+      const caixaNovaFinal = caixaNova - indemnizacoes;
 
       const snapshot: EstadoBase & Record<string, unknown> = {
-        caixa: caixaNova, ativos: ativosNovo, marca: marcaNovo, divida: dividaNova,
+        caixa: caixaNovaFinal, ativos: ativosNovo, marca: marcaNovo, divida: dividaNova,
         moral: Mn, stress_org: Sn, ambicao_org: An,
         maquinas: b.estado.maquinas + comprarMaquinas,
         forca_vendas: b.forca_vendas,
@@ -590,7 +675,7 @@ Deno.serve(async (req) => {
         perfil_emergente: b.perfilNome,
         decisoes_resumo: {
           id_orcamento: Number(b.dec.CFO?.id_orcamento ?? 0),
-          contratar_investigadores: Number(b.dec.CHRO?.contratar_investigadores ?? 0),
+          contratar_investigadores: 0,
           wageRatio: b.wageRatio,
           formacao: b.formacao,
           marketing: b.marketing,
@@ -606,8 +691,9 @@ Deno.serve(async (req) => {
           efeito: {}, payload: {}, timing: "resolucao",
         });
       }
-      const valor = Math.max(0, caixaNova) + ativosNovo * 30000 + marcaNovo * 1500 - dividaNova + Math.max(0, net) * 2;
+      const valor = Math.max(0, caixaNovaFinal) + ativosNovo * 30000 + marcaNovo * 1500 - dividaNova + Math.max(0, net) * 2;
       resultadosInsert.push({ equipa_id: b.equipa_id, ronda_id: ronda.id, valor });
+
 
       for (const a of b.auditoria) {
         auditoriaInsert.push({
@@ -620,6 +706,15 @@ Deno.serve(async (req) => {
     if (snapshotsInsert.length) await sb.from("estado_empresa").insert(snapshotsInsert);
     if (eventosInsert.length) await sb.from("eventos").insert(eventosInsert);
     if (resultadosInsert.length) await sb.from("resultados").insert(resultadosInsert);
+
+    // Aplicar alterações a colaboradores (despedimentos, promoções, novos).
+    for (const u of colabsUpdatesGlobal) {
+      await sb.from("colaboradores").update(u.patch).eq("id", u.id);
+    }
+    if (colabsInsertsGlobal.length) {
+      await sb.from("colaboradores").insert(colabsInsertsGlobal);
+    }
+
     if (auditoriaInsert.length) await sb.from("log_auditoria").insert(auditoriaInsert);
 
     // Posições por mercado.
@@ -771,7 +866,7 @@ function gerarDecisoesIA(
     },
     CHRO: {
       salario, formacao: perfil === "foco_qualidade" ? 1500 : 500, bonus: 0,
-      contratar: 0, despedir: 0, promover_supervisor: false, contratar_investigadores: 0,
+      acoes_pessoas: [], contratacoes: [],
     },
   };
 }

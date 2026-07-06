@@ -7,8 +7,10 @@ import {
   atualizarNomeEmpresa as atualizarNomeEmpresaFn,
   atualizarNomePerfil as atualizarNomePerfilFn,
 } from "@/lib/jogo.functions";
+import { carregarChro as carregarChroFn } from "@/lib/chro.functions";
 import type { Lugar, Acesso, SalaId } from "@/lib/jogo/tipos";
 import { LUGARES } from "@/lib/jogo/tipos";
+import type { AcaoPessoa, Contratacao } from "@/lib/jogo/schema-decisoes";
 
 /* ============ Tipos partilhados ============ */
 export type Snapshot = Record<string, unknown> & {
@@ -42,6 +44,7 @@ export type Colaborador = {
   stress_individual: number;
   antiguidade: number;
   necessidades: Record<string, unknown>;
+  salario_mult: number;
 };
 
 export type Rival = { equipa_id: string; nome: string; valor: number };
@@ -65,6 +68,17 @@ export type PesquisaRegisto = {
   lugar: Lugar;
 };
 
+export type Candidato = {
+  id: string;
+  arquetipo: string;
+  avatar_variante: 1 | 2;
+  atributos: Record<string, number>;
+  salario_mensal_pedido: number;
+  salario_mult: number;
+  pistas: string[];
+  nota: string | null;
+};
+
 type DadosJogo = {
   modo: "real" | "demo";
   competicao_id: string | null;
@@ -82,6 +96,8 @@ type DadosJogo = {
   rivais: Rival[];
   decisoes: Partial<Record<Lugar, DecisaoRegisto>>;
   pesquisas: Partial<Record<Lugar, PesquisaRegisto[]>>;
+  chro_representante_id: string | null;
+  chro_candidatos: Candidato[];
 };
 
 type Estado = DadosJogo & {
@@ -102,9 +118,16 @@ type Estado = DadosJogo & {
   // Pesquisa
   usarPesquisa: (
     lugar: Lugar,
-    opts: { tipo: string; nivel: "L1" | "L2" | "L3"; custo: number },
+    opts: { tipo: string; nivel?: "L1" | "L2" | "L3"; custo?: number },
   ) => Promise<void>;
   pesquisaUsada: (lugar: Lugar) => boolean;
+
+  // CHRO — ações pendentes (aplicadas no submit)
+  chroAcoesPendentes: (colaborador_id: string) => AcaoPessoa | null;
+  adicionarAcaoPessoa: (a: AcaoPessoa) => void;
+  removerAcaoPessoa: (colaborador_id: string) => void;
+  adicionarContratacao: (c: Contratacao) => void;
+  removerContratacao: (candidato_id: string) => void;
 
   // Empresa / perfil
   nomeEmpresa: string;
@@ -155,6 +178,8 @@ function estadoVazio(): DadosJogo {
     ],
     decisoes: {},
     pesquisas: {},
+    chro_representante_id: null,
+    chro_candidatos: [],
   };
 }
 
@@ -183,6 +208,7 @@ export function JogoProvider({
   const fnPesquisa = useServerFn(executarAcaoInfo);
   const fnNomeEmpresa = useServerFn(atualizarNomeEmpresaFn);
   const fnNomePerfil = useServerFn(atualizarNomePerfilFn);
+  const fnCarregarChro = useServerFn(carregarChroFn);
 
   const carregar = useCallback(async () => {
     if (!equipaId) {
@@ -242,7 +268,7 @@ export function JogoProvider({
       // Colaboradores
       const { data: cols } = await supabase
         .from("colaboradores")
-        .select("id, arquetipo, avatar_variante, papel_org, motivacao, stress_individual, antiguidade, necessidades")
+        .select("id, arquetipo, avatar_variante, papel_org, motivacao, stress_individual, antiguidade, necessidades, salario_mult")
         .eq("equipa_id", equipaId)
         .eq("ativo", true);
 
@@ -310,6 +336,19 @@ export function JogoProvider({
         });
       }
 
+      // CHRO — representante do turno + pool de candidatos determinístico
+      let chro_representante_id: string | null = null;
+      let chro_candidatos: Candidato[] = [];
+      if (ronda?.id) {
+        try {
+          const r = await fnCarregarChro({ data: { equipa_id: equipaId, ronda_id: ronda.id } });
+          chro_representante_id = r.representante_id;
+          chro_candidatos = r.candidatos as Candidato[];
+        } catch (e) {
+          console.warn("[JogoContext] carregarChro falhou", e);
+        }
+      }
+
       setDados({
         modo: "real",
         competicao_id,
@@ -327,11 +366,13 @@ export function JogoProvider({
         rivais,
         decisoes,
         pesquisas,
+        chro_representante_id,
+        chro_candidatos,
       });
     } finally {
       setACarregar(false);
     }
-  }, [equipaId]);
+  }, [equipaId, fnCarregarChro]);
 
   useEffect(() => {
     carregar();
@@ -372,7 +413,7 @@ export function JogoProvider({
   const usarPesquisa = useCallback(
     async (
       lugar: Lugar,
-      opts: { tipo: string; nivel: "L1" | "L2" | "L3"; custo: number },
+      opts: { tipo: string; nivel?: "L1" | "L2" | "L3"; custo?: number },
     ) => {
       if (dados.modo !== "real" || !dados.ronda_id || !dados.equipa_id) return;
       await fnPesquisa({
@@ -389,6 +430,80 @@ export function JogoProvider({
     },
     [dados, fnPesquisa, carregar],
   );
+
+  // CHRO — rascunho de ações pessoais e contratações
+  const lerCHRORasc = useCallback(() => {
+    const cur = (rascunho.CHRO ?? {}) as Record<string, unknown>;
+    const guardado = (dados.decisoes.CHRO?.payload ?? {}) as Record<string, unknown>;
+    const acoes = (Array.isArray(cur.acoes_pessoas) ? cur.acoes_pessoas
+      : Array.isArray(guardado.acoes_pessoas) ? guardado.acoes_pessoas : []) as AcaoPessoa[];
+    const contr = (Array.isArray(cur.contratacoes) ? cur.contratacoes
+      : Array.isArray(guardado.contratacoes) ? guardado.contratacoes : []) as Contratacao[];
+    return { acoes, contr };
+  }, [rascunho.CHRO, dados.decisoes.CHRO]);
+
+  const chroAcoesPendentes = useCallback(
+    (colaborador_id: string) => {
+      const { acoes } = lerCHRORasc();
+      return acoes.find((a) => a.colaborador_id === colaborador_id) ?? null;
+    },
+    [lerCHRORasc],
+  );
+
+  const adicionarAcaoPessoa = useCallback(
+    (a: AcaoPessoa) => {
+      const { acoes, contr } = lerCHRORasc();
+      const outros = acoes.filter((x) => x.colaborador_id !== a.colaborador_id);
+      setRascunho((r) => ({
+        ...r,
+        CHRO: { ...(r.CHRO ?? {}), acoes_pessoas: [...outros, a], contratacoes: contr },
+      }));
+    },
+    [lerCHRORasc],
+  );
+
+  const removerAcaoPessoa = useCallback(
+    (colaborador_id: string) => {
+      const { acoes, contr } = lerCHRORasc();
+      setRascunho((r) => ({
+        ...r,
+        CHRO: {
+          ...(r.CHRO ?? {}),
+          acoes_pessoas: acoes.filter((a) => a.colaborador_id !== colaborador_id),
+          contratacoes: contr,
+        },
+      }));
+    },
+    [lerCHRORasc],
+  );
+
+  const adicionarContratacao = useCallback(
+    (c: Contratacao) => {
+      const { acoes, contr } = lerCHRORasc();
+      if (contr.some((x) => x.candidato_id === c.candidato_id)) return;
+      setRascunho((r) => ({
+        ...r,
+        CHRO: { ...(r.CHRO ?? {}), acoes_pessoas: acoes, contratacoes: [...contr, c] },
+      }));
+    },
+    [lerCHRORasc],
+  );
+
+  const removerContratacao = useCallback(
+    (candidato_id: string) => {
+      const { acoes, contr } = lerCHRORasc();
+      setRascunho((r) => ({
+        ...r,
+        CHRO: {
+          ...(r.CHRO ?? {}),
+          acoes_pessoas: acoes,
+          contratacoes: contr.filter((c) => c.candidato_id !== candidato_id),
+        },
+      }));
+    },
+    [lerCHRORasc],
+  );
+
 
   const pesquisaUsada = useCallback(
     (lugar: Lugar) => {
@@ -439,13 +554,18 @@ export function JogoProvider({
       submeterLugar,
       usarPesquisa,
       pesquisaUsada,
+      chroAcoesPendentes,
+      adicionarAcaoPessoa,
+      removerAcaoPessoa,
+      adicionarContratacao,
+      removerContratacao,
       nomeEmpresa: dados.equipa_nome,
       guardarNomeEmpresa,
       guardarNomePerfil,
       recarregar: carregar,
       aCarregar,
     }),
-    [dados, acesso, lugarVisto, sala, podeEditar, submetidos, rascunho, atualizarRascunho, submeterLugar, usarPesquisa, pesquisaUsada, guardarNomeEmpresa, guardarNomePerfil, carregar, aCarregar],
+    [dados, acesso, lugarVisto, sala, podeEditar, submetidos, rascunho, atualizarRascunho, submeterLugar, usarPesquisa, pesquisaUsada, chroAcoesPendentes, adicionarAcaoPessoa, removerAcaoPessoa, adicionarContratacao, removerContratacao, guardarNomeEmpresa, guardarNomePerfil, carregar, aCarregar],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

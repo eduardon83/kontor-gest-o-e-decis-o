@@ -81,7 +81,7 @@ function fmtEur(v: number | null | undefined): string {
  * Componente principal
  * ============================================================ */
 export function ObjetoPesquisa({ lugar }: { lugar: Lugar }) {
-  const { pesquisas, usarPesquisa, podeEditar, ronda_indice } = useJogo();
+  const { pesquisas, usarPesquisa, podeEditar, ronda_indice, chro_representante_id, colaboradores } = useJogo();
   const meta = META[lugar];
   const lista = pesquisas[lugar] ?? [];
   const editavel = podeEditar(lugar);
@@ -98,13 +98,122 @@ export function ObjetoPesquisa({ lugar }: { lugar: Lugar }) {
     setErro(null);
     setOcupado(true);
     try {
-      await usarPesquisa(lugar, { tipo: meta.tipoAcao, nivel: escolhido.id, custo: escolhido.custo });
+      if (lugar === "CHRO") {
+        // Diálogo — sem níveis, sem custo.
+        await usarPesquisa(lugar, { tipo: meta.tipoAcao });
+      } else {
+        await usarPesquisa(lugar, { tipo: meta.tipoAcao, nivel: escolhido.id, custo: escolhido.custo });
+      }
     } catch (e) {
       setErro((e as Error).message);
     } finally {
       setOcupado(false);
     }
   }
+
+  // ── Variante CHRO: sem níveis, representante destacado ──
+  if (lugar === "CHRO") {
+    const rep = colaboradores.find((c) => c.id === chro_representante_id) ?? null;
+    return (
+      <section className="rounded-sm border bg-card">
+        <header
+          className="flex items-start gap-4 border-b p-4"
+          style={{ background: "color-mix(in oklab, var(--gold) 6%, var(--card))" }}
+        >
+          <div
+            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-sm border bg-navy text-2xl"
+            style={{ borderColor: "var(--gold)" }}
+            aria-hidden
+          >
+            {meta.objetoIcone}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="mono text-[10px] uppercase tracking-[0.24em] text-gold">
+              Diálogo · uma vez por turno
+            </div>
+            <h3 className="mt-0.5 font-serif text-xl leading-tight">Ouvir o representante do turno</h3>
+            <p className="mt-1.5 flex items-start gap-1.5 text-sm text-muted-foreground">
+              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gold" />
+              <span>
+                Cada turno um funcionário é designado como representante. Uma conversa franca revela
+                moral, stress, necessidades e o clima do resto da equipa.
+              </span>
+            </p>
+          </div>
+        </header>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4">
+          <div className="text-xs text-muted-foreground">
+            {rep ? (
+              <div>
+                Representante deste turno:{" "}
+                <strong className="font-serif text-foreground">
+                  #{rep.id.slice(0, 4).toUpperCase()}
+                </strong>{" "}
+                <span className="mono text-[10px] uppercase tracking-widest text-gold">
+                  {rep.arquetipo ?? "—"}
+                </span>
+              </div>
+            ) : (
+              <div>Ainda sem representante — precisa de colaboradores ativos.</div>
+            )}
+            <div className="mono mt-1 text-[10px] uppercase tracking-widest">1 diálogo por turno</div>
+          </div>
+          <button
+            type="button"
+            onClick={confirmar}
+            disabled={bloqueado || ocupado || !rep}
+            className="inline-flex items-center gap-2 rounded-sm bg-navy px-4 py-2 text-sm font-medium text-paper transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ borderColor: "var(--gold)" }}
+          >
+            {ocupado ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 text-gold" />}
+            {ocupado ? "A dialogar…" : jaUsouNesteTurno ? "Já dialogou este turno" : "Dialogar"}
+          </button>
+        </div>
+
+        {erro && (
+          <div className="border-b bg-destructive/5 px-4 py-2 text-sm text-destructive">
+            <XCircle className="mr-1 inline h-3.5 w-3.5" /> {erro}
+          </div>
+        )}
+
+        <div>
+          <div className="mono flex items-center justify-between border-b px-4 py-2 text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+            <span>Diálogos anteriores</span>
+            <span>{lista.length} registo{lista.length === 1 ? "" : "s"}</span>
+          </div>
+          <ul className="divide-y">
+            {lista.length === 0 && (
+              <li className="p-4 text-sm text-muted-foreground">Ainda sem diálogos registados.</li>
+            )}
+            {lista.map((p) => (
+              <li key={p.id} className="p-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <div className="font-serif text-sm">Diálogo com representante</div>
+                  <div className="mono flex shrink-0 items-baseline gap-3 text-[10px] uppercase tracking-widest">
+                    {p.ronda_indice != null && <span className="text-muted-foreground">T{p.ronda_indice}</span>}
+                  </div>
+                </div>
+                {p.resultado ? (
+                  <pre className="mt-2 max-h-64 overflow-auto rounded-sm bg-muted/30 p-3 text-xs text-muted-foreground">
+                    {JSON.stringify(p.resultado, null, 2)}
+                  </pre>
+                ) : (
+                  <div className="mono mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+                    Resultado ainda em processamento…
+                  </div>
+                )}
+                <div className="mono mt-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                  {new Date(p.criado_em).toLocaleString("pt-PT")}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    );
+  }
+
 
   return (
     <section className="rounded-sm border bg-card">

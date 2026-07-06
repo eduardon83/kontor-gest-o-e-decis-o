@@ -170,6 +170,8 @@ function estadoVazio(): DadosJogo {
     ],
     decisoes: {},
     pesquisas: {},
+    chro_representante_id: null,
+    chro_candidatos: [],
   };
 }
 

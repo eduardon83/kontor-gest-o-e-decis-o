@@ -67,6 +67,17 @@ export type PesquisaRegisto = {
   lugar: Lugar;
 };
 
+export type Candidato = {
+  id: string;
+  arquetipo: string;
+  avatar_variante: 1 | 2;
+  atributos: Record<string, number>;
+  salario_mensal_pedido: number;
+  salario_mult: number;
+  pistas: string[];
+  nota: string | null;
+};
+
 type DadosJogo = {
   modo: "real" | "demo";
   competicao_id: string | null;
@@ -84,6 +95,8 @@ type DadosJogo = {
   rivais: Rival[];
   decisoes: Partial<Record<Lugar, DecisaoRegisto>>;
   pesquisas: Partial<Record<Lugar, PesquisaRegisto[]>>;
+  chro_representante_id: string | null;
+  chro_candidatos: Candidato[];
 };
 
 type Estado = DadosJogo & {

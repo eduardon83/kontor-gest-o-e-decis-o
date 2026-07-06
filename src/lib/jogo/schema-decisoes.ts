@@ -44,14 +44,21 @@ export type PayloadCMO = {
   pesquisa_mercado: number;          // €
 };
 
+export type TipoAcaoPessoa =
+  | "promover_merito"
+  | "promover_supervisor"
+  | "promover_chefe_linha"
+  | "despedir";
+
+export type AcaoPessoa = { colaborador_id: string; tipo: TipoAcaoPessoa };
+export type Contratacao = { candidato_id: string };
+
 export type PayloadCHRO = {
-  salario: number;                   // ratio (ex.: 1.10 = 10% acima do mercado)
+  salario: number;                   // ratio (ex.: 1.10 = 10% acima do mercado) — global
   formacao: number;                  // €
   bonus: number;                     // €
-  contratar: number;
-  despedir: number;
-  promover_supervisor: boolean;
-  contratar_investigadores: number;
+  acoes_pessoas: AcaoPessoa[];       // aplicadas no fim do turno
+  contratacoes: Contratacao[];       // ids do pool determinístico
 };
 
 export type PayloadPorLugar = {

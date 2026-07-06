@@ -140,6 +140,3 @@ function SalaAtual() {
   }
 }
 
-// Referência para evitar aviso de import não usado quando o schema muda.
-void SALAS;
-void LUGARES;

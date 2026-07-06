@@ -44,6 +44,7 @@ export type Colaborador = {
   stress_individual: number;
   antiguidade: number;
   necessidades: Record<string, unknown>;
+  salario_mult: number;
 };
 
 export type Rival = { equipa_id: string; nome: string; valor: number };

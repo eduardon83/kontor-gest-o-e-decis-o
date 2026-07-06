@@ -57,9 +57,11 @@ export type PesquisaRegisto = {
   id: string;
   tipo: string;
   nivel: string | null;
+  custo: number | null;
   confianca: number | null;
   resultado: Record<string, unknown> | null;
   criado_em: string;
+  ronda_indice: number | null;
   lugar: Lugar;
 };
 

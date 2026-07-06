@@ -9,8 +9,8 @@
 //           id_modo:'interno'|'licenca' }
 //   CMO:  { preco:{cadeira,mesa,armario}, marketing:number,
 //           canal:'grosso'|'direto'|'exportacao', forca_vendas:number, pesquisa_mercado:number }
-//   CHRO: { salario:number, formacao:number, bonus:number, contratar:number,
-//           despedir:number, promover_supervisor:bool, contratar_investigadores:number }
+//   CHRO: { salario:number, formacao:number, bonus:number,
+//           acoes_pessoas:[{colaborador_id,tipo}], contratacoes:[{candidato_id}] }
 import { admin, corsHeaders, json } from "../_shared/supabase.ts";
 import { clamp, stream } from "../_shared/prng.ts";
 import {

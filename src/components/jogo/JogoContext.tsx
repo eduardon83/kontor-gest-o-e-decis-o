@@ -100,7 +100,10 @@ type Estado = DadosJogo & {
   submeterLugar: (lugar: Lugar) => Promise<void>;
 
   // Pesquisa
-  usarPesquisa: (lugar: Lugar, tipo: string, nivel?: string) => Promise<void>;
+  usarPesquisa: (
+    lugar: Lugar,
+    opts: { tipo: string; nivel: "L1" | "L2" | "L3"; custo: number },
+  ) => Promise<void>;
   pesquisaUsada: (lugar: Lugar) => boolean;
 
   // Empresa / perfil

@@ -327,6 +327,19 @@ export function JogoProvider({
         });
       }
 
+      // CHRO — representante do turno + pool de candidatos determinístico
+      let chro_representante_id: string | null = null;
+      let chro_candidatos: Candidato[] = [];
+      if (ronda?.id) {
+        try {
+          const r = await fnCarregarChro({ data: { equipa_id: equipaId, ronda_id: ronda.id } });
+          chro_representante_id = r.representante_id;
+          chro_candidatos = r.candidatos as Candidato[];
+        } catch (e) {
+          console.warn("[JogoContext] carregarChro falhou", e);
+        }
+      }
+
       setDados({
         modo: "real",
         competicao_id,
@@ -344,11 +357,13 @@ export function JogoProvider({
         rivais,
         decisoes,
         pesquisas,
+        chro_representante_id,
+        chro_candidatos,
       });
     } finally {
       setACarregar(false);
     }
-  }, [equipaId]);
+  }, [equipaId, fnCarregarChro]);
 
   useEffect(() => {
     carregar();

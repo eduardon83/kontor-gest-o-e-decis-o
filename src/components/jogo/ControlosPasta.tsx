@@ -117,11 +117,47 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
               <NumericoField key={p} rotulo={`Produção · ${p}`} v={valor.producao?.[p] ?? 0} min={0} max={500} step={10}
                 onChange={(n) => up({ producao: { ...(valor.producao ?? {}), [p]: n } })} disabled={!editavel} unidade="un" />
             ))}
-            <Opcoes rotulo="Tier" v={valor.tier} opcoes={["standard","fine","artisan"]} onChange={(o) => up({ tier: o })} disabled={!editavel} />
-            <NumericoField rotulo="Comprar máquinas" v={valor.comprar_maquinas} min={0} max={20} step={1} onChange={(n) => up({ comprar_maquinas: n })} disabled={!editavel} />
-            <Opcoes rotulo="Ritmo" v={valor.ritmo} opcoes={["ferias","folga","normal","horas_extra"]} onChange={(o) => up({ ritmo: o })} disabled={!editavel} />
+            <OpcoesDescr
+              rotulo="Tier"
+              v={valor.tier}
+              opcoes={[
+                { valor: "standard", titulo: "Standard", descricao: "Sem I&D. Custo base." },
+                { valor: "fine", titulo: "Fine", descricao: "Requer FINE. +58% mão-de-obra, melhor qualidade." },
+                { valor: "artisan", titulo: "Artisan", descricao: "Requer ARTISAN. +110% mão-de-obra, top qualidade." },
+              ]}
+              onChange={(o) => up({ tier: o })}
+              disabled={!editavel}
+            />
+            <MaquinasField
+              v={valor.comprar_maquinas}
+              maquinasAtuais={Number((snapshotAtual as any)?.maquinas ?? 0)}
+              onChange={(n) => up({ comprar_maquinas: n })}
+              disabled={!editavel}
+            />
+            <OpcoesDescr
+              rotulo="Ritmo"
+              v={valor.ritmo}
+              opcoes={[
+                { valor: "ferias", titulo: "Férias", descricao: "Reinicia o stress mas produz ~0 no turno." },
+                { valor: "folga", titulo: "Folga", descricao: "Alivia stress; reduz capacidade." },
+                { valor: "normal", titulo: "Normal", descricao: "Ritmo base (160 h/trabalhador)." },
+                { valor: "horas_extra", titulo: "Horas extra", descricao: "+40 h/trabalhador; mão-de-obra a 1,5×; +stress." },
+              ]}
+              onChange={(o) => up({ ritmo: o })}
+              disabled={!editavel}
+            />
             <Slider rotulo="Subcontratação" v={valor.subcontratacao} min={0} max={1} step={0.05} onChange={(n) => up({ subcontratacao: n })} disabled={!editavel} sufixo={(v) => `${Math.round(v*100)}%`} />
-            <Opcoes rotulo="Modo I&D" v={valor.id_modo} opcoes={["interno","licenca"]} onChange={(o) => up({ id_modo: o })} disabled={!editavel} />
+            <OpcoesDescr
+              rotulo="Modo I&D"
+              v={valor.id_modo}
+              opcoes={[
+                { valor: "interno", titulo: "Interno", descricao: "Investigadores desenvolvem ao longo dos turnos (custo = salário dos investigadores)." },
+                { valor: "licenca", titulo: "Licença", descricao: "Pagamento único de €45.000 — desbloqueia já a tecnologia." },
+              ]}
+              onChange={(o) => up({ id_modo: o })}
+              disabled={!editavel}
+            />
+            <PainelCapacidadeCOO valor={valor} snapshot={snapshotAtual} />
           </>
         )}
 

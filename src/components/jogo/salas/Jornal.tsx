@@ -9,6 +9,9 @@ const CORES_ESTADO = {
 } as const;
 
 export function Jornal() {
+  const { snapshotAtual, setSala } = useJogo();
+  const fin = financeiroDo(snapshotAtual);
+  const turnoFin = Number((snapshotAtual as any)?.turno ?? 0);
   return (
     <div className="space-y-6">
       {/* Jornal principal */}

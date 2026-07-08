@@ -1,16 +1,25 @@
 import { useEffect, useState } from "react";
 import { Check, Lock } from "lucide-react";
 import { useJogo } from "./JogoContext";
+import { EstadoEquipa } from "./EstadoEquipa";
 import type { Lugar } from "@/lib/jogo/tipos";
+
+const POSTURAS: { valor: string; titulo: string; descricao: string }[] = [
+  { valor: "Crescimento", titulo: "Crescimento", descricao: "Prioriza a expansão de vendas e capacidade produtiva." },
+  { valor: "Rentabilidade", titulo: "Rentabilidade", descricao: "Foca a margem e a geração de caixa." },
+  { valor: "Quota", titulo: "Quota", descricao: "Ganhar mercado mesmo com margem menor." },
+  { valor: "Equilibrio", titulo: "Equilíbrio", descricao: "Mistura crescimento, margem e prudência." },
+];
 
 /* Payload canónico (schema-decisoes.ts). Aqui apenas os campos essenciais que a UI edita. */
 const INICIAL: Record<Lugar, Record<string, unknown>> = {
-  CEO: { linhas_saida: [], teto_divida: 500_000, dividendos: 0, postura: "" },
+  CEO: { linhas_saida: [], teto_divida: 500_000, dividendos: 0, postura: "Equilibrio" },
   CFO: { markup: 0.35, emprestimo: 0, amortizar: 0, capex: 0, id_orcamento: 0, tesouraria: "equilibrado", usar_prejuizos: false, seguro: false },
   COO: { producao: { cadeira: 300, mesa: 150, armario: 80 }, tier: "standard", comprar_maquinas: 0, ritmo: "normal", subcontratacao: 0, id_modo: "interno" },
   CMO: { preco: { cadeira: 89, mesa: 249, armario: 399 }, marketing: 5000, canal: "grosso", forca_vendas: 4, pesquisa_mercado: 0 },
   CHRO: { salario: 1.0, formacao: 0, bonus: 0, acoes_pessoas: [], contratacoes: [] },
 };
+
 
 export function ControlosPasta({ lugar }: { lugar: Lugar }) {
   const { podeEditar, submetidos, submeterLugar, decisoes, atualizarRascunho, rascunho, guardarNomeEmpresa, nomeEmpresa } = useJogo();

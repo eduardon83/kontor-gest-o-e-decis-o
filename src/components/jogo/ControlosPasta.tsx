@@ -117,11 +117,47 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
               <NumericoField key={p} rotulo={`Produção · ${p}`} v={valor.producao?.[p] ?? 0} min={0} max={500} step={10}
                 onChange={(n) => up({ producao: { ...(valor.producao ?? {}), [p]: n } })} disabled={!editavel} unidade="un" />
             ))}
-            <Opcoes rotulo="Tier" v={valor.tier} opcoes={["standard","fine","artisan"]} onChange={(o) => up({ tier: o })} disabled={!editavel} />
-            <NumericoField rotulo="Comprar máquinas" v={valor.comprar_maquinas} min={0} max={20} step={1} onChange={(n) => up({ comprar_maquinas: n })} disabled={!editavel} />
-            <Opcoes rotulo="Ritmo" v={valor.ritmo} opcoes={["ferias","folga","normal","horas_extra"]} onChange={(o) => up({ ritmo: o })} disabled={!editavel} />
+            <OpcoesDescr
+              rotulo="Tier"
+              v={valor.tier}
+              opcoes={[
+                { valor: "standard", titulo: "Standard", descricao: "Sem I&D. Custo base." },
+                { valor: "fine", titulo: "Fine", descricao: "Requer FINE. +58% mão-de-obra, melhor qualidade." },
+                { valor: "artisan", titulo: "Artisan", descricao: "Requer ARTISAN. +110% mão-de-obra, top qualidade." },
+              ]}
+              onChange={(o) => up({ tier: o })}
+              disabled={!editavel}
+            />
+            <MaquinasField
+              v={valor.comprar_maquinas}
+              maquinasAtuais={Number((snapshotAtual as any)?.maquinas ?? 0)}
+              onChange={(n) => up({ comprar_maquinas: n })}
+              disabled={!editavel}
+            />
+            <OpcoesDescr
+              rotulo="Ritmo"
+              v={valor.ritmo}
+              opcoes={[
+                { valor: "ferias", titulo: "Férias", descricao: "Reinicia o stress mas produz ~0 no turno." },
+                { valor: "folga", titulo: "Folga", descricao: "Alivia stress; reduz capacidade." },
+                { valor: "normal", titulo: "Normal", descricao: "Ritmo base (160 h/trabalhador)." },
+                { valor: "horas_extra", titulo: "Horas extra", descricao: "+40 h/trabalhador; mão-de-obra a 1,5×; +stress." },
+              ]}
+              onChange={(o) => up({ ritmo: o })}
+              disabled={!editavel}
+            />
             <Slider rotulo="Subcontratação" v={valor.subcontratacao} min={0} max={1} step={0.05} onChange={(n) => up({ subcontratacao: n })} disabled={!editavel} sufixo={(v) => `${Math.round(v*100)}%`} />
-            <Opcoes rotulo="Modo I&D" v={valor.id_modo} opcoes={["interno","licenca"]} onChange={(o) => up({ id_modo: o })} disabled={!editavel} />
+            <OpcoesDescr
+              rotulo="Modo I&D"
+              v={valor.id_modo}
+              opcoes={[
+                { valor: "interno", titulo: "Interno", descricao: "Investigadores desenvolvem ao longo dos turnos (custo = salário dos investigadores)." },
+                { valor: "licenca", titulo: "Licença", descricao: "Pagamento único de €45.000 — desbloqueia já a tecnologia." },
+              ]}
+              onChange={(o) => up({ id_modo: o })}
+              disabled={!editavel}
+            />
+            <PainelCapacidadeCOO valor={valor} snapshot={snapshotAtual} />
           </>
         )}
 
@@ -281,6 +317,165 @@ function SeguroBox({ ativo, onChange, disabled }: { ativo: boolean; onChange: (v
         </p>
       </div>
     </Campo>
+  );
+}
+
+/* ============================ Helpers COO ============================ */
+
+const MAO_MULT: Record<string, number> = { standard: 1.0, fine: 1.58, artisan: 2.1 };
+const MAO: Record<string, number> = { cadeira: 0.6, mesa: 1.4, armario: 2.2 };
+const MACH_H: Record<string, number> = { cadeira: 1, mesa: 2.5, armario: 4 };
+
+function OpcoesDescr({
+  rotulo, v, opcoes, onChange, disabled,
+}: {
+  rotulo: string;
+  v: string;
+  opcoes: { valor: string; titulo: string; descricao: string }[];
+  onChange: (o: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Campo rotulo={rotulo}>
+      <div className="grid gap-1.5 sm:grid-cols-2">
+        {opcoes.map((o) => {
+          const ativo = v === o.valor;
+          return (
+            <button
+              key={o.valor}
+              type="button"
+              disabled={disabled}
+              onClick={() => onChange(o.valor)}
+              className={`rounded-sm border p-2 text-left transition-colors disabled:opacity-60 ${
+                ativo ? "border-gold bg-gold/10" : "border-border hover:bg-muted"
+              }`}
+            >
+              <div className="font-serif text-sm">{o.titulo}</div>
+              <div className="text-[11px] leading-snug text-muted-foreground">{o.descricao}</div>
+            </button>
+          );
+        })}
+      </div>
+    </Campo>
+  );
+}
+
+function MaquinasField({
+  v, maquinasAtuais, onChange, disabled,
+}: { v: number; maquinasAtuais: number; onChange: (n: number) => void; disabled?: boolean }) {
+  return (
+    <Campo rotulo="Comprar máquinas">
+      <div className="rounded-sm border border-dashed border-border p-3">
+        <div className="mb-2 flex items-center justify-between gap-3 text-xs">
+          <div className="text-muted-foreground">
+            Máquinas atuais: <span className="mono text-foreground">{maquinasAtuais}</span>
+          </div>
+          <div className="text-muted-foreground">
+            Custo por máquina: <span className="mono text-foreground">€60.000</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            value={v ?? 0}
+            min={0}
+            max={20}
+            step={1}
+            disabled={disabled}
+            onChange={(e) => onChange(Number(e.target.value))}
+            className="mono w-24 rounded-sm border bg-background px-2 py-1 text-sm disabled:opacity-60"
+          />
+          <span className="mono text-[10px] uppercase text-muted-foreground">
+            → €{((v ?? 0) * 60_000).toLocaleString("pt-PT")} · frota final: {maquinasAtuais + (v ?? 0)}
+          </span>
+        </div>
+      </div>
+    </Campo>
+  );
+}
+
+function PainelCapacidadeCOO({ valor, snapshot }: { valor: Record<string, any>; snapshot: any }) {
+  const snap = (snapshot ?? {}) as Record<string, number | undefined>;
+  const trabalhadores = Number(snap.trabalhadores ?? 0);
+  const supervisores = Number(snap.supervisores ?? 0);
+  const maquinas = Number(snap.maquinas ?? 0) + Math.max(0, Number(valor.comprar_maquinas ?? 0));
+  const moralOrg = Number(snap.moral ?? 50);
+  const ambicao = 50; // aproximação — não disponível no snapshot cliente
+  const stress = 40;
+
+  const cobertos = Math.min(trabalhadores, supervisores * 8);
+  const descobertos = Math.max(0, trabalhadores - supervisores * 8);
+  const coordPen = descobertos * 0.01;
+  const prodMult = Math.min(1.4, Math.max(0.5,
+    1 + 0.30 * ((moralOrg - 50) / 50)
+      - 0.25 * (Math.max(0, stress - 40) / 60)
+      + 0.10 * ((ambicao - 50) / 50)
+      - coordPen,
+  ));
+
+  const ritmo = String(valor.ritmo ?? "normal");
+  const overtime = ritmo === "horas_extra" ? 40 : 0;
+  const tier = String(valor.tier ?? "standard");
+  const idDesbl: string[] = Array.isArray((snap as any).id?.desbloqueados) ? (snap as any).id.desbloqueados : [];
+  const automacao = idDesbl.includes("AUTOMACAO") ? 1.15 : 1;
+
+  const capLabour = (trabalhadores * 160 + overtime * trabalhadores) * prodMult;
+  const capMachine = maquinas * 450 * prodMult * automacao;
+
+  const alvo = (valor.producao ?? {}) as Record<string, number>;
+  const labNeed = (["cadeira","mesa","armario"] as const)
+    .reduce((s, p) => s + Number(alvo[p] ?? 0) * MAO[p] * MAO_MULT[tier], 0);
+  const machNeed = (["cadeira","mesa","armario"] as const)
+    .reduce((s, p) => s + Number(alvo[p] ?? 0) * MACH_H[p], 0);
+  const totalAlvo = Number(alvo.cadeira ?? 0) + Number(alvo.mesa ?? 0) + Number(alvo.armario ?? 0);
+
+  const scaleLab = labNeed > 0 ? capLabour / labNeed : Infinity;
+  const scaleMach = machNeed > 0 ? capMachine / machNeed : Infinity;
+  const scale = Math.min(1, scaleLab, scaleMach);
+  const capacidadeAlvo = Math.floor(totalAlvo * (scale === Infinity ? 1 : scale));
+  const limitante = scaleLab < scaleMach ? "mão-de-obra" : "máquinas";
+  const excede = totalAlvo > 0 && scale < 1;
+
+  return (
+    <div className="space-y-3 rounded-sm border border-gold/30 bg-gold/5 p-3">
+      <div>
+        <div className="mono text-[10px] uppercase tracking-widest text-gold">Capacidade estimada</div>
+        <p className="mt-1 text-sm">
+          {totalAlvo > 0 ? (
+            <>
+              ≈ <span className="mono font-semibold">{capacidadeAlvo}</span> de{" "}
+              <span className="mono">{totalAlvo}</span> un pedidas · limitada por{" "}
+              <span className="font-semibold">{limitante}</span>
+            </>
+          ) : (
+            <>Define alvos de produção para veres a capacidade.</>
+          )}
+        </p>
+        {excede && (
+          <p className="mt-1 text-xs font-medium text-destructive">
+            Estás a pedir {totalAlvo}; a capacidade é ~{capacidadeAlvo}. Reduz alvos, sobe máquinas ou usa horas extra.
+          </p>
+        )}
+        <div className="mono mt-2 grid grid-cols-2 gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+          <div>capLabour ≈ <span className="text-foreground">{Math.round(capLabour)}</span> h</div>
+          <div>capMachine ≈ <span className="text-foreground">{Math.round(capMachine)}</span> h</div>
+          <div>labNeed ≈ <span className="text-foreground">{Math.round(labNeed)}</span> h</div>
+          <div>machNeed ≈ <span className="text-foreground">{Math.round(machNeed)}</span> h</div>
+        </div>
+      </div>
+      <div className="border-t border-gold/20 pt-3">
+        <div className="mono text-[10px] uppercase tracking-widest text-gold">Cobertura de supervisão</div>
+        <p className="mt-1 text-sm">
+          <span className="mono">{supervisores}</span> supervisor{supervisores === 1 ? "" : "es"} cobre{supervisores === 1 ? "" : "m"}{" "}
+          <span className="mono">{supervisores * 8}</span> de <span className="mono">{trabalhadores}</span> trabalhador{trabalhadores === 1 ? "" : "es"}
+          {descobertos > 0 ? (
+            <> · <span className="font-semibold text-destructive">{descobertos} descoberto{descobertos === 1 ? "" : "s"}</span> → penalização prodMult −{coordPen.toFixed(2)}</>
+          ) : (
+            <> · <span className="text-gold">rácio adequado</span> (1 supervisor por 8)</>
+          )}
+        </p>
+      </div>
+    </div>
   );
 }
 

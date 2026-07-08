@@ -94,10 +94,10 @@ export function RosterCHRO() {
     ?? []
   ) as { candidato_id: string }[];
 
-  if (modo !== "real") {
+  if (modo !== "real" && colaboradores.length === 0) {
     return (
       <section className="rounded-sm border bg-card p-4 text-sm text-muted-foreground">
-        Roster interativo disponível no modo real (dentro de uma Hansa em curso).
+        Sem colaboradores para mostrar.
       </section>
     );
   }

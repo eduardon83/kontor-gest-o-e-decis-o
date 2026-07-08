@@ -1,4 +1,6 @@
 import { JORNAL } from "@/lib/jogo/dados-exemplo";
+import { useJogo } from "../JogoContext";
+import { fmtEUR, financeiroDo } from "../RelatorioFinanceiro";
 
 const CORES_ESTADO = {
   aplicado: "text-gold",

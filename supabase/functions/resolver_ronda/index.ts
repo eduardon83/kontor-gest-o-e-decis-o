@@ -498,12 +498,22 @@ Deno.serve(async (req) => {
         desbloqueados: [...b.estado.id.desbloqueados],
         progresso: b.estado.id.progresso + rdProgress,
       };
-      // Um desbloqueio por turno (o breakthrough força mesmo sem custo cumprido).
-      const prox = proximoElegivel(idNovo);
+      // Alvo escolhido pelo COO (se elegível); senão, próximo por menor custo.
+      const idAlvoPedido = String((b.dec.COO as Record<string, unknown> | undefined)?.id_alvo ?? "");
+      const feitos = new Set(idNovo.desbloqueados);
+      let prox = proximoElegivel(idNovo);
+      if (idAlvoPedido) {
+        const cand = ID_NOS.find((n) => n.id === idAlvoPedido);
+        const elegivel = !!cand && !feitos.has(cand.id) && cand.prereq.every((p) => feitos.has(p));
+        if (elegivel) prox = cand!;
+        else if (cand) b.auditoria.push({ acao: "id_alvo_ignorado", payload: { pedido: idAlvoPedido, motivo: feitos.has(cand.id) ? "ja_desbloqueado" : "prereq_em_falta" } });
+      }
+      const idModoCOO = String((b.dec.COO as Record<string, unknown> | undefined)?.id_modo ?? "interno");
       if (prox) {
-        if (breakthrough || idNovo.progresso >= prox.custo) {
+        const forcaLicenca = idModoCOO === "licenca"; // €45k pagos em rdCost — desbloqueia já
+        if (forcaLicenca || breakthrough || idNovo.progresso >= prox.custo) {
           idNovo.desbloqueados.push(prox.id);
-          idNovo.progresso = Math.max(0, idNovo.progresso - prox.custo);
+          idNovo.progresso = Math.max(0, idNovo.progresso - (forcaLicenca ? 0 : prox.custo));
           eventosEq.push({ tipo: `ID_desbloqueado:${prox.id}` });
         }
       }

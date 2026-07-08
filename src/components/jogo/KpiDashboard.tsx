@@ -4,7 +4,8 @@ import { useJogo } from "./JogoContext";
 import type { Kpi } from "@/lib/jogo/dados-exemplo";
 import { HISTORICO_TURNOS, KPIS } from "@/lib/jogo/dados-exemplo";
 import { LUGARES, type Lugar } from "@/lib/jogo/tipos";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, ChevronRight, Download } from "lucide-react";
+import { PnLBalanco, relatorioParaCSV, descarregarCSV } from "./RelatorioFinanceiro";
 
 function fmt(v: number, u: string) {
   if (u === "€") return `${(v / 1000).toFixed(1)}k €`;
@@ -56,9 +57,10 @@ function kpisReais(lugar: Lugar | "Global", snapshots: any[]): Kpi[] {
 }
 
 export function KpiDashboard({ lugar, comSeparadores }: { lugar: Lugar | "Global"; comSeparadores?: boolean }) {
-  const { modo, snapshots } = useJogo();
+  const { modo, snapshots, equipa_nome, competicao_nome } = useJogo();
   const [aba, setAba] = useState<Lugar | "Global">(lugar);
   const [historico, setHistorico] = useState(false);
+  const [aberto, setAberto] = useState<number | null>(null);
 
   const alvo = comSeparadores ? aba : lugar;
   const lista =
@@ -66,7 +68,8 @@ export function KpiDashboard({ lugar, comSeparadores }: { lugar: Lugar | "Global
       ? kpisReais(alvo, snapshots)
       : KPIS[alvo];
 
-  const historicoLinhas =
+  type LinhaHist = { turno: number; receita: number; custos: number; ebitda: number; valor: number; snapshot?: any };
+  const historicoLinhas: LinhaHist[] =
     modo === "real"
       ? snapshots.map((s: any) => ({
           turno: s.ronda_indice,
@@ -74,8 +77,20 @@ export function KpiDashboard({ lugar, comSeparadores }: { lugar: Lugar | "Global
           custos: Number(s.snapshot?.custos ?? 0),
           ebitda: Number(s.snapshot?.ebitda ?? 0),
           valor: Number(s.snapshot?.valor ?? 0),
+          snapshot: s.snapshot,
         }))
-      : HISTORICO_TURNOS;
+      : HISTORICO_TURNOS.map((t) => ({ ...t, snapshot: undefined }));
+
+  function baixarCSV(linha: LinhaHist) {
+    const fin = linha.snapshot?.financeiro;
+    if (!fin) return;
+    const csv = relatorioParaCSV(fin, {
+      equipa: equipa_nome,
+      competicao: competicao_nome,
+      turno: linha.turno,
+    });
+    descarregarCSV(`relatorio-${equipa_nome}-T${linha.turno}`, csv);
+  }
 
   return (
     <section className="space-y-4">
@@ -119,33 +134,57 @@ export function KpiDashboard({ lugar, comSeparadores }: { lugar: Lugar | "Global
       {historico && (
         <div className="rounded-sm border bg-card">
           <div className="border-b px-4 py-2">
-            <div className="mono text-[10px] uppercase tracking-widest text-muted-foreground">Histórico por turno</div>
+            <div className="mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              Histórico por turno · clica para ver P&amp;L + Balanço
+            </div>
           </div>
           {historicoLinhas.length === 0 ? (
             <div className="p-4 text-sm text-muted-foreground">Sem histórico ainda.</div>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="mono border-b text-[10px] uppercase tracking-widest text-muted-foreground">
-                  <th className="px-4 py-2 text-left">Turno</th>
-                  <th className="px-4 py-2 text-right">Receita</th>
-                  <th className="px-4 py-2 text-right">Custos</th>
-                  <th className="px-4 py-2 text-right">EBITDA</th>
-                  <th className="px-4 py-2 text-right">Valor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {historicoLinhas.map((t) => (
-                  <tr key={t.turno} className="border-b last:border-0">
-                    <td className="mono px-4 py-2">T{t.turno}</td>
-                    <td className="mono px-4 py-2 text-right">{(t.receita / 1000).toFixed(1)}k</td>
-                    <td className="mono px-4 py-2 text-right">{(t.custos / 1000).toFixed(1)}k</td>
-                    <td className="mono px-4 py-2 text-right text-gold">{(t.ebitda / 1000).toFixed(1)}k</td>
-                    <td className="mono px-4 py-2 text-right">{(t.valor / 1000).toFixed(0)}k</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <ul className="divide-y">
+              {historicoLinhas.map((t) => {
+                const expandido = aberto === t.turno;
+                const fin = t.snapshot?.financeiro;
+                return (
+                  <li key={t.turno}>
+                    <button
+                      type="button"
+                      onClick={() => setAberto(expandido ? null : t.turno)}
+                      className="grid w-full grid-cols-[auto_1fr_repeat(4,minmax(0,80px))] items-center gap-3 px-4 py-2 text-left text-sm hover:bg-muted/40"
+                    >
+                      <ChevronRight className={`h-3 w-3 transition-transform ${expandido ? "rotate-90" : ""}`} />
+                      <span className="mono text-[11px] uppercase tracking-widest">T{t.turno}</span>
+                      <span className="mono text-right text-xs">{(t.receita / 1000).toFixed(1)}k</span>
+                      <span className="mono text-right text-xs">{(t.custos / 1000).toFixed(1)}k</span>
+                      <span className="mono text-right text-xs text-gold">{(t.ebitda / 1000).toFixed(1)}k</span>
+                      <span className="mono text-right text-xs">{(t.valor / 1000).toFixed(0)}k</span>
+                    </button>
+                    {expandido && (
+                      <div className="space-y-3 border-t bg-muted/20 p-4">
+                        {fin ? (
+                          <>
+                            <div className="flex justify-end">
+                              <button
+                                type="button"
+                                onClick={() => baixarCSV(t)}
+                                className="mono inline-flex items-center gap-1.5 rounded-sm border border-gold/50 bg-gold/10 px-2.5 py-1 text-[10px] uppercase tracking-widest text-gold hover:bg-gold/20"
+                              >
+                                <Download className="h-3 w-3" /> Descarregar relatório (CSV)
+                              </button>
+                            </div>
+                            <PnLBalanco fin={fin} turno={t.turno} />
+                          </>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            Sem P&amp;L detalhada para este turno (turno anterior ao registo financeiro completo, ou modo demo).
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
       )}

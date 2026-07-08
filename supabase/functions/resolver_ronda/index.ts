@@ -671,18 +671,102 @@ Deno.serve(async (req) => {
       // Indemnizações saem da caixa depois do net.
       const caixaNovaFinal = caixaNova - indemnizacoes;
 
+      // ─── Demonstração financeira (P&L + Balanço + reconciliação) ────
+      const receitaLinha: Record<Produto, number> = { cadeira: 0, mesa: 0, armario: 0 };
+      const cogsLinha: Record<Produto, number> = { cadeira: 0, mesa: 0, armario: 0 };
+      for (const p of Object.keys(PRODUTOS) as Produto[]) {
+        receitaLinha[p] = vendas[p] * b.precos[p] * (1 - b.export_share + b.export_share * CONST.exportacao_mult);
+        cogsLinha[p] = vendas[p] * b.custoUnit[p];
+      }
+      const wagesTrab = b.estado.trabalhadores * 160 * CONST.custo_hora * b.wageRatio;
+      const wagesSup  = b.estado.supervisores  * 160 * CONST.custo_hora * 1.4 * b.wageRatio;
+      const wagesInv  = b.estado.investigadores * 160 * CONST.custo_hora * 1.6 * b.wageRatio;
+      const rdLicenca = b.id_modo === "licenca" ? 45000 : 0;
+      const rdOrc     = b.id_modo === "licenca" ? 0 : Number(b.dec.CFO?.id_orcamento ?? 0);
+      const rdInvestCost = b.estado.investigadores * 160 * CONST.custo_hora;
+      const escudoUsado = usarPrejuizos ? Math.max(0, pre) - baseTributavel : 0;
+      const maquinasFim = b.estado.maquinas + comprarMaquinas;
+      const ativosProdutivosValor = maquinasFim * 30000;
+      const ativoTotal = Math.max(0, caixaNovaFinal) + ativosProdutivosValor;
+      const capitalProprio = ativoTotal - dividaNova;
+      const valorEmpresa = Math.max(0, caixaNovaFinal) + ativosNovo * 30000 + marcaNovo * 1500 - dividaNova + Math.max(0, net) * 2;
+      const capex = comprarMaquinas * 60000;
+      const caixaReconstruida = b.estado.caixa + net - capex + b.empréstimo_novo - b.amortizar - b.dividendos - indemnizacoes;
+      const custosTotais = prodCost + fixed + interest;
+
+      const financeiro = {
+        turno: ronda.indice,
+        pnl: {
+          receita: { por_linha: receitaLinha, total: receita },
+          cogs: { por_linha: cogsLinha, total: prodCost },
+          margem_bruta: receita - prodCost,
+          estrutura: {
+            salarios: {
+              trabalhadores: wagesTrab, supervisores: wagesSup, investigadores: wagesInv,
+              total: wagesTrab + wagesSup + wagesInv,
+            },
+            renda: rent,
+            depreciacao: dep,
+            marketing: b.marketing,
+            forca_vendas: { unidades: b.forca_vendas, custo: b.forca_vendas * 2500 },
+            formacao: b.formacao,
+            bonus: b.bonus,
+            pesquisa_mercado: Number(b.dec.CMO?.pesquisa_mercado ?? 0),
+            pesquisas_info: custoPesquisas,
+            total: fixed,
+          },
+          id: {
+            modo: b.id_modo,
+            orcamento: rdOrc,
+            licenca: rdLicenca,
+            investigadores_custo: rdInvestCost,
+            total: b.rdCost,
+          },
+          juros: interest,
+          resultado_antes_impostos: pre,
+          imposto: { valor: imposto, base_tributavel: baseTributavel, escudo_prejuizos: escudoUsado, taxa: CONST.imposto },
+          resultado_liquido: net,
+        },
+        balanco: {
+          ativo: {
+            caixa: caixaNovaFinal,
+            ativos_produtivos: ativosProdutivosValor,
+            total: ativoTotal,
+          },
+          passivo: { divida: dividaNova, total: dividaNova },
+          capital_proprio: capitalProprio,
+          marca_valor: marcaNovo * 1500,
+          valor_empresa: valorEmpresa,
+          fecha: Math.abs(ativoTotal - (dividaNova + capitalProprio)) < 0.01,
+        },
+        reconciliacao_caixa: {
+          caixa_inicial: b.estado.caixa,
+          resultado_liquido: net,
+          capex,
+          emprestimo_novo: b.empréstimo_novo,
+          amortizar: b.amortizar,
+          dividendos: b.dividendos,
+          indemnizacoes,
+          caixa_final: caixaNovaFinal,
+          fecha: Math.abs(caixaReconstruida - caixaNovaFinal) < 0.01,
+        },
+        eventos: eventosEq.map((e) => e.tipo),
+      };
+
       const snapshot: EstadoBase & Record<string, unknown> = {
         caixa: caixaNovaFinal, ativos: ativosNovo, marca: marcaNovo, divida: dividaNova,
         moral: Mn, stress_org: Sn, ambicao_org: An,
-        maquinas: b.estado.maquinas + comprarMaquinas,
+        maquinas: maquinasFim,
         forca_vendas: b.forca_vendas,
         trabalhadores: trabalhadoresNovo, supervisores: supervisoresNovo, investigadores: investigadoresNovo,
         prejuizos_acum: prejuizosNovo, historia: [...b.estado.historia, `turno ${ronda.indice}`],
         id: idNovo,
         turno: ronda.indice, vendas, receita, prodCost, fixed, interest, imposto, resultado: net,
+        custos: custosTotais, ebitda: receita - prodCost - fixed, valor: valorEmpresa,
         precos: b.precos, tiers: b.tiers, ritmo: b.ritmo, wageRatio: b.wageRatio,
         prodMult: b.prodMult, qualMult: b.qualMult,
         perfil_emergente: b.perfilNome,
+        financeiro,
         decisoes_resumo: {
           id_orcamento: Number(b.dec.CFO?.id_orcamento ?? 0),
           contratar_investigadores: 0,

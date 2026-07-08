@@ -517,3 +517,73 @@ function PainelCapacidadeCOO({ valor, snapshot }: { valor: Record<string, any>; 
   );
 }
 
+/* ============================ Helpers CMO ============================ */
+
+const REF_PRECO: Record<string, number> = { cadeira: 72, mesa: 150, armario: 245 };
+const NOMES_PROD: Record<string, string> = { cadeira: "Cadeira", mesa: "Mesa", armario: "Armário" };
+
+function PrecoLinha({
+  produto, v, onChange, disabled,
+}: { produto: "cadeira" | "mesa" | "armario"; v: number; onChange: (n: number) => void; disabled?: boolean }) {
+  const ref = REF_PRECO[produto];
+  const delta = v > 0 ? Math.round(((v - ref) / ref) * 100) : 0;
+  return (
+    <Campo rotulo={`Preço · ${NOMES_PROD[produto]}`}>
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          value={v ?? 0}
+          min={20}
+          max={999}
+          step={1}
+          disabled={disabled}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="mono w-32 rounded-sm border bg-background px-2 py-1 text-sm disabled:opacity-60"
+        />
+        <span className="mono text-[10px] uppercase text-muted-foreground">€</span>
+        <span className="mono ml-auto text-[10px] uppercase text-muted-foreground">
+          ref €{ref}
+          {v > 0 && (
+            <span className={`ml-2 ${delta > 0 ? "text-gold" : delta < 0 ? "text-destructive" : ""}`}>
+              {delta > 0 ? "+" : ""}{delta}%
+            </span>
+          )}
+        </span>
+      </div>
+    </Campo>
+  );
+}
+
+function ForcaVendasField({
+  v, onChange, disabled,
+}: { v: number; onChange: (n: number) => void; disabled?: boolean }) {
+  const custo = Math.max(0, v) * 2500;
+  const apelo = Math.max(0, v) * 4;
+  return (
+    <Campo rotulo="Força de vendas">
+      <div className="space-y-2 rounded-sm border border-dashed border-border p-3">
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            value={v ?? 0}
+            min={0}
+            max={40}
+            step={1}
+            disabled={disabled}
+            onChange={(e) => onChange(Number(e.target.value))}
+            className="mono w-24 rounded-sm border bg-background px-2 py-1 text-sm disabled:opacity-60"
+          />
+          <span className="mono text-[10px] uppercase text-muted-foreground">vendedores</span>
+        </div>
+        <div className="mono grid grid-cols-2 gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+          <div>custo <span className="text-foreground">€{custo.toLocaleString("pt-PT")}</span></div>
+          <div>apelo <span className="text-foreground">+{apelo}%</span></div>
+        </div>
+        <p className="text-[11px] leading-snug text-muted-foreground">
+          €2.500 por vendedor · +4% de apelo por unidade. Investimento por turno.
+        </p>
+      </div>
+    </Campo>
+  );
+}
+

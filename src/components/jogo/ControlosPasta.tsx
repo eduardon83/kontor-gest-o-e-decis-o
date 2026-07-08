@@ -228,3 +228,59 @@ function Opcoes({ rotulo, v, opcoes, onChange, disabled }: { rotulo: string; v: 
     </Campo>
   );
 }
+
+function PrejuizosBox({ prejuizos, ativo, onChange, disabled }: { prejuizos: number; ativo: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+  const tem = prejuizos > 0;
+  return (
+    <Campo rotulo="Usar prejuízos acumulados">
+      <div className="space-y-2 rounded-sm border border-dashed border-border p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-xs text-muted-foreground">
+            {tem ? (
+              <>Prejuízos por usar: <span className="mono text-foreground">€{prejuizos.toLocaleString("pt-PT")}</span></>
+            ) : (
+              "Sem prejuízos acumulados a usar"
+            )}
+          </div>
+          <button
+            type="button"
+            disabled={disabled || !tem}
+            onClick={() => onChange(!ativo)}
+            className={`inline-flex h-6 w-11 items-center rounded-full border ${ativo ? "bg-gold border-gold" : "bg-muted border-border"} disabled:opacity-50`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${ativo ? "translate-x-6" : "translate-x-1"}`} />
+          </button>
+        </div>
+        <p className="text-[11px] leading-snug text-muted-foreground">
+          Ao usar, cria escudo fiscal que reduz o imposto do turno.
+        </p>
+      </div>
+    </Campo>
+  );
+}
+
+function SeguroBox({ ativo, onChange, disabled }: { ativo: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+  return (
+    <Campo rotulo="Seguro">
+      <div className="space-y-2 rounded-sm border border-dashed border-border p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-xs text-muted-foreground">
+            Custo: <span className="mono text-foreground">~€1.500/turno</span>
+          </div>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(!ativo)}
+            className={`inline-flex h-6 w-11 items-center rounded-full border ${ativo ? "bg-gold border-gold" : "bg-muted border-border"} disabled:opacity-50`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${ativo ? "translate-x-6" : "translate-x-1"}`} />
+          </button>
+        </div>
+        <p className="text-[11px] leading-snug text-muted-foreground">
+          Reduz em ~50% o impacto financeiro de eventos adversos neste turno.
+        </p>
+      </div>
+    </Campo>
+  );
+}
+

@@ -144,15 +144,17 @@ Deno.serve(async (req) => {
         .select("snapshot, criado_em").eq("equipa_id", equipa_id)
         .order("criado_em", { ascending: false }).limit(1).maybeSingle();
       const base = DEFAULT_ESTADO(economia!.capital_inicial);
+      // Contagens canónicas: sempre derivadas da tabela colaboradores (ativos).
+      const meta = (colabsPorEquipa.get(equipa_id) ?? []).filter((c) => c.ativo !== false);
+      const derivadas = {
+        trabalhadores: meta.filter((c) => c.papel_org === "trabalhador").length,
+        supervisores: meta.filter((c) => c.papel_org === "supervisor").length,
+        investigadores: meta.filter((c) => c.papel_org === "investigador").length,
+      };
       if (data?.snapshot && typeof data.snapshot === "object") {
-        return { ...base, ...(data.snapshot as Partial<EstadoBase>) };
+        return { ...base, ...(data.snapshot as Partial<EstadoBase>), ...derivadas };
       }
-      // Deriva contagem de trabalhadores/supervisores da tabela colaboradores.
-      const meta = colabsPorEquipa.get(equipa_id) ?? [];
-      base.trabalhadores = meta.filter((c) => c.papel_org === "trabalhador").length || base.trabalhadores;
-      base.supervisores = meta.filter((c) => c.papel_org === "supervisor").length || base.supervisores;
-      base.investigadores = meta.filter((c) => c.papel_org === "investigador").length;
-      return base;
+      return { ...base, ...derivadas };
     }
 
     // Janela dos últimos até 3 turnos para deteção de perfil emergente.

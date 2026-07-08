@@ -168,6 +168,7 @@ function estadoVazio(): DadosJogo {
       ebitda: 46_800,
       moral: 68,
       quota: 18.4,
+      prejuizos_acum: 24_500,
     },
     snapshots: [],
     colaboradores: [],

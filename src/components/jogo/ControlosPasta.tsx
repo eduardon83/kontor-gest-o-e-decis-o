@@ -149,16 +149,18 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
           </>
         )}
 
-        <div className="flex items-center justify-between border-t pt-4">
-          <div className="mono text-[10px] uppercase tracking-widest text-muted-foreground">Estado da equipa</div>
-          <button
-            disabled={!editavel || submetido || ocupado}
-            onClick={submeter}
-            className="mono inline-flex items-center gap-1.5 rounded-sm bg-navy px-3 py-2 text-[11px] uppercase tracking-widest text-paper transition-colors hover:bg-deep disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {submetido && <Check className="h-3 w-3 text-gold" />}
-            {submetido ? "Submetido" : ocupado ? "A submeter…" : "Submeter o meu ecrã"}
-          </button>
+        <div className="space-y-3 border-t pt-4">
+          <EstadoEquipa />
+          <div className="flex justify-end">
+            <button
+              disabled={!editavel || submetido || ocupado}
+              onClick={submeter}
+              className="mono inline-flex items-center gap-1.5 rounded-sm bg-navy px-3 py-2 text-[11px] uppercase tracking-widest text-paper transition-colors hover:bg-deep disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submetido && <Check className="h-3 w-3 text-gold" />}
+              {submetido ? "Submetido" : ocupado ? "A submeter…" : "Submeter o meu ecrã"}
+            </button>
+          </div>
         </div>
       </div>
     </section>

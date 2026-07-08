@@ -14,6 +14,7 @@ import type { AcaoPessoa, Contratacao } from "@/lib/jogo/schema-decisoes";
 import {
   gerarRosterDemo, gerarCandidatosDemo, escolherRepresentanteDemo, novoDialogoRegistoDemo,
 } from "@/lib/jogo/demo-roster";
+import { derivarContagens, MAQUINAS_INICIAIS } from "@/lib/jogo/contagens";
 
 /* ============ Tipos partilhados ============ */
 export type Snapshot = Record<string, unknown> & {
@@ -146,6 +147,9 @@ const Ctx = createContext<Estado | null>(null);
 function estadoVazio(): DadosJogo {
   // Estado pré-semeado para o modo demo/tutorial: turno 5 de 16, com histórico
   // coerente com HISTORICO_TURNOS / KPIS (últimos 4 turnos concluídos).
+  // Roster gerado UMA VEZ para partilhar entre CHRO, COO e chão de fábrica.
+  const roster = gerarRosterDemo("demo:marnera:t5");
+  const cont = derivarContagens(roster);
   return {
     modo: "demo",
     competicao_id: null,
@@ -172,12 +176,13 @@ function estadoVazio(): DadosJogo {
       moral: 68,
       quota: 18.4,
       prejuizos_acum: 24_500,
+      maquinas: MAQUINAS_INICIAIS,
+      trabalhadores: cont.trabalhadores,
+      supervisores: cont.supervisores,
+      investigadores: cont.investigadores,
     },
     snapshots: [],
-    colaboradores: (() => {
-      const roster = gerarRosterDemo("demo:marnera:t5");
-      return roster;
-    })(),
+    colaboradores: roster,
     rivais: [
       { equipa_id: "demo-a", nome: "Nordis", valor: 704_200 },
       { equipa_id: "demo-b", nome: "Torvel", valor: 588_100 },
@@ -198,10 +203,7 @@ function estadoVazio(): DadosJogo {
       },
     },
     pesquisas: {},
-    chro_representante_id: (() => {
-      const roster = gerarRosterDemo("demo:marnera:t5");
-      return escolherRepresentanteDemo(roster, 5);
-    })(),
+    chro_representante_id: escolherRepresentanteDemo(roster, 5),
     chro_candidatos: gerarCandidatosDemo("demo:marnera:t5:cands"),
   };
 }
@@ -619,9 +621,28 @@ export function JogoProvider({
     [fnNomePerfil],
   );
 
+  // Contagens derivadas do roster — fonte única partilhada por CHRO/COO/chão.
+  const snapshotEnriquecido = useMemo<Snapshot | null>(() => {
+    const base = dados.snapshotAtual;
+    const c = derivarContagens(dados.colaboradores);
+    const maquinasBase = Number((base as any)?.maquinas);
+    const maquinas = Number.isFinite(maquinasBase) && maquinasBase > 0
+      ? maquinasBase
+      : MAQUINAS_INICIAIS;
+    return {
+      ...(base ?? {}),
+      trabalhadores: c.trabalhadores,
+      supervisores: c.supervisores,
+      investigadores: c.investigadores,
+      gestores: c.gestores,
+      maquinas,
+    };
+  }, [dados.snapshotAtual, dados.colaboradores]);
+
   const value = useMemo<Estado>(
     () => ({
       ...dados,
+      snapshotAtual: snapshotEnriquecido,
       acesso,
       setAcesso,
       lugarVisto,
@@ -646,7 +667,7 @@ export function JogoProvider({
       recarregar: carregar,
       aCarregar,
     }),
-    [dados, acesso, lugarVisto, sala, podeEditar, submetidos, rascunho, atualizarRascunho, submeterLugar, usarPesquisa, pesquisaUsada, chroAcoesPendentes, adicionarAcaoPessoa, removerAcaoPessoa, adicionarContratacao, removerContratacao, guardarNomeEmpresa, guardarNomePerfil, carregar, aCarregar],
+    [dados, snapshotEnriquecido, acesso, lugarVisto, sala, podeEditar, submetidos, rascunho, atualizarRascunho, submeterLugar, usarPesquisa, pesquisaUsada, chroAcoesPendentes, adicionarAcaoPessoa, removerAcaoPessoa, adicionarContratacao, removerContratacao, guardarNomeEmpresa, guardarNomePerfil, carregar, aCarregar],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

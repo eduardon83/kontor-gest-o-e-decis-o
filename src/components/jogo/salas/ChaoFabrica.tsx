@@ -13,6 +13,7 @@ export function ChaoFabrica() {
 
   const trabalhadores = Number(snap.trabalhadores ?? 0);
   const supervisores = Number(snap.supervisores ?? 0);
+  const gestores = Number(snap.gestores ?? 0);
   const maquinas = Number(snap.maquinas ?? 0);
   const prodMultReal = Number(snap.prodMult ?? 1);
   const idDesbl: string[] = Array.isArray(snap.id?.desbloqueados) ? snap.id.desbloqueados : [];
@@ -41,10 +42,16 @@ export function ChaoFabrica() {
   const totalAlvo = PRODS.reduce((s, p) => s + Number(alvo[p] ?? 0), 0);
   const labNeed = PRODS.reduce((s, p) => s + Number(alvo[p] ?? 0) * MAO[p] * MAO_MULT[tierPlan], 0);
   const machNeed = PRODS.reduce((s, p) => s + Number(alvo[p] ?? 0) * MACH_H[p], 0);
-  const scale = Math.min(1,
-    labNeed > 0 ? capLabPlan / labNeed : 1,
-    machNeed > 0 ? capMachPlan / machNeed : 1);
+  const rawLab = labNeed > 0 ? capLabPlan / labNeed : Infinity;
+  const rawMach = machNeed > 0 ? capMachPlan / machNeed : Infinity;
+  const rawInt = Math.min(rawLab, rawMach);
+  const scaleInt = Math.min(1, rawInt);
+  const sub = Math.max(0, Math.min(1, Number(cooEff.subcontratacao ?? 0)));
+  const subEff = Math.min(0.5, sub);
+  const scale = Math.min(1, scaleInt * (1 + subEff));
   const utilizacao = Math.min(1, Math.max(labNeed / Math.max(1, capLabPlan), machNeed / Math.max(1, capMachPlan)));
+  const supNeed = Math.ceil(trabalhadores / 8) || 0;
+  const gestNeed = trabalhadores > 24 ? Math.ceil(trabalhadores / 24) : 0;
   const descobertos = Math.max(0, trabalhadores - supervisores * 8);
 
   return (

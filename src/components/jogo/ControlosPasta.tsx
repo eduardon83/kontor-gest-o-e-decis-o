@@ -111,18 +111,6 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
           </>
         )}
 
-        {lugar === "CFO" && (
-          <>
-            <NumericoField rotulo="Empréstimo novo (€)" v={valor.emprestimo} min={0} max={500_000} step={5_000} onChange={(n) => up({ emprestimo: n })} disabled={!editavel} />
-            <NumericoField rotulo="Amortizar (€)" v={valor.amortizar} min={0} max={500_000} step={5_000} onChange={(n) => up({ amortizar: n })} disabled={!editavel} />
-            <NumericoField rotulo="CAPEX (€)" v={valor.capex} min={0} max={500_000} step={5_000} onChange={(n) => up({ capex: n })} disabled={!editavel} />
-            <NumericoField rotulo="Orçamento I&D (€)" v={valor.id_orcamento} min={0} max={200_000} step={1_000} onChange={(n) => up({ id_orcamento: n })} disabled={!editavel} />
-            <Opcoes rotulo="Tesouraria" v={valor.tesouraria} opcoes={["conservador","equilibrado","agressivo"]} onChange={(o) => up({ tesouraria: o })} disabled={!editavel} />
-            <Toggle rotulo="Usar prejuízos acumulados" v={!!valor.usar_prejuizos} onChange={(t) => up({ usar_prejuizos: t })} disabled={!editavel} />
-            <Toggle rotulo="Seguro" v={!!valor.seguro} onChange={(t) => up({ seguro: t })} disabled={!editavel} />
-          </>
-        )}
-
         {lugar === "COO" && (
           <>
             {(["cadeira","mesa","armario"] as const).map((p) => (

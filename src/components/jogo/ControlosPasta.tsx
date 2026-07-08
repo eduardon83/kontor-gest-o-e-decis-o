@@ -164,12 +164,50 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
         {lugar === "CMO" && (
           <>
             {(["cadeira","mesa","armario"] as const).map((p) => (
-              <NumericoField key={p} rotulo={`Preço · ${p}`} v={valor.preco?.[p] ?? 0} min={20} max={999} step={1}
-                onChange={(n) => up({ preco: { ...(valor.preco ?? {}), [p]: n } })} disabled={!editavel} unidade="€" />
+              <PrecoLinha
+                key={p}
+                produto={p}
+                v={Number(valor.preco?.[p] ?? 0)}
+                onChange={(n) => up({ preco: { ...(valor.preco ?? {}), [p]: n } })}
+                disabled={!editavel}
+              />
             ))}
-            <NumericoField rotulo="Marketing (€)" v={valor.marketing} min={0} max={80_000} step={500} onChange={(n) => up({ marketing: n })} disabled={!editavel} />
-            <Opcoes rotulo="Canal" v={valor.canal} opcoes={["grosso","direto","exportacao"]} onChange={(o) => up({ canal: o })} disabled={!editavel} />
-            <NumericoField rotulo="Força de vendas" v={valor.forca_vendas} min={0} max={40} step={1} onChange={(n) => up({ forca_vendas: n })} disabled={!editavel} />
+            <Campo rotulo="Marketing (€)">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={valor.marketing ?? 0}
+                    min={0}
+                    max={80_000}
+                    step={500}
+                    disabled={!editavel}
+                    onChange={(e) => up({ marketing: Number(e.target.value) })}
+                    className="mono w-32 rounded-sm border bg-background px-2 py-1 text-sm disabled:opacity-60"
+                  />
+                  <span className="mono text-[10px] uppercase text-muted-foreground">€ · por turno</span>
+                </div>
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  Aumenta apelo e alcance com retornos decrescentes (cada euro extra rende menos).
+                </p>
+              </div>
+            </Campo>
+            <OpcoesDescr
+              rotulo="Canal"
+              v={valor.canal}
+              opcoes={[
+                { valor: "grosso", titulo: "Grosso", descricao: "Preço realizado ×0,85, +10% alcance — mais volume a margem menor." },
+                { valor: "direto", titulo: "Direto", descricao: "Preço ×1,00, marca +2/turno, −10% alcance; marketing rende ×1,15." },
+                { valor: "exportacao", titulo: "Exportação", descricao: "Preço ×0,72; abre procura externa adicional." },
+              ]}
+              onChange={(o) => up({ canal: o })}
+              disabled={!editavel}
+            />
+            <ForcaVendasField
+              v={Number(valor.forca_vendas ?? 0)}
+              onChange={(n) => up({ forca_vendas: n })}
+              disabled={!editavel}
+            />
             <NumericoField rotulo="Pesquisa de mercado (€)" v={valor.pesquisa_mercado} min={0} max={40_000} step={500} onChange={(n) => up({ pesquisa_mercado: n })} disabled={!editavel} />
           </>
         )}

@@ -11,6 +11,9 @@ import { carregarChro as carregarChroFn } from "@/lib/chro.functions";
 import type { Lugar, Acesso, SalaId } from "@/lib/jogo/tipos";
 import { LUGARES } from "@/lib/jogo/tipos";
 import type { AcaoPessoa, Contratacao } from "@/lib/jogo/schema-decisoes";
+import {
+  gerarRosterDemo, gerarCandidatosDemo, escolherRepresentanteDemo, novoDialogoRegistoDemo,
+} from "@/lib/jogo/demo-roster";
 
 /* ============ Tipos partilhados ============ */
 export type Snapshot = Record<string, unknown> & {

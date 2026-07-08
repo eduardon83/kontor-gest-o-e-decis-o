@@ -177,6 +177,62 @@ Deno.serve(async (req) => {
     const { error: eSeed } = await sb.from("economia_seed").insert({ competicao_id, dados });
     if (eSeed) throw new Error(`economia_seed: ${eSeed.message}`);
 
+    // Estado inicial (turno 0 / abertura do turno 1): garante que UI e resolver
+    // partem de valores coerentes. Contagens derivadas dos colaboradores gerados.
+    const MAQUINAS_INICIAIS = 3;
+    const capitalInicial = Number(params.capital_inicial ?? 60000);
+    const { data: ronda1 } = await sb.from("rondas")
+      .select("id").eq("competicao_id", competicao_id).eq("indice", 1).maybeSingle();
+    if (ronda1?.id && equipas.length) {
+      // Contagens por equipa a partir dos colaboradores acabados de criar.
+      const contPorEquipa = new Map<string, { trab: number; sup: number; ges: number; inv: number }>();
+      for (const eq of equipas) contPorEquipa.set(eq.id, { trab: 0, sup: 0, ges: 0, inv: 0 });
+      for (const c of colaboradores) {
+        const k = contPorEquipa.get(c.equipa_id as string);
+        if (!k) continue;
+        const p = c.papel_org as string;
+        if (p === "trabalhador") k.trab++;
+        else if (p === "supervisor") k.sup++;
+        else if (p === "gestor_linha") k.ges++;
+        else if (p === "investigador") k.inv++;
+      }
+      const { data: jaExiste } = await sb.from("estado_empresa")
+        .select("equipa_id").eq("ronda_id", ronda1.id);
+      const jaSet = new Set((jaExiste ?? []).map((r) => r.equipa_id));
+      const linhas = equipas
+        .filter((eq) => !jaSet.has(eq.id))
+        .map((eq) => {
+          const k = contPorEquipa.get(eq.id) ?? { trab: 0, sup: 0, ges: 0, inv: 0 };
+          return {
+            equipa_id: eq.id,
+            ronda_id: ronda1.id,
+            snapshot: {
+              turno: 0,
+              caixa: capitalInicial,
+              divida: 0,
+              ativos: MAQUINAS_INICIAIS * 30000,
+              marca: 40,
+              moral: 65,
+              stress_org: 30,
+              ambicao_org: 55,
+              maquinas: MAQUINAS_INICIAIS,
+              forca_vendas: 3,
+              trabalhadores: k.trab,
+              supervisores: k.sup,
+              gestores: k.ges,
+              investigadores: k.inv,
+              prejuizos_acum: 0,
+              historia: [],
+              inicial: true,
+            },
+          };
+        });
+      if (linhas.length) {
+        const { error: eEE } = await sb.from("estado_empresa").insert(linhas);
+        if (eEE) console.warn("[gerar_economia] estado_empresa inicial:", eEE.message);
+      }
+    }
+
     return json({ ok: true, turnos: T, equipas: equipas.length, colaboradores: colaboradores.length });
   } catch (e) {
     console.error("[gerar_economia]", e);

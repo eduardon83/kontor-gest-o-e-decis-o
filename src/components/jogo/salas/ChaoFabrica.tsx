@@ -107,16 +107,32 @@ export function ChaoFabrica() {
             <Kv k="machNeed" v={`${Math.round(machNeed)} h`} />
           </div>
           <p className="mt-2 text-xs">
-            Cobertura: <span className="mono">{supervisores}</span> × 8 = <span className="mono">{supervisores * 8}</span> de {trabalhadores}
+            <span className="mono">{trabalhadores}</span> trabalhadores ·{" "}
+            <span className="mono">{supervisores}</span> supervisor{supervisores === 1 ? "" : "es"}{" "}
+            <span className="text-muted-foreground">({supNeed === 0 ? "nenhum necessário" : `basta${supNeed === 1 ? "" : "m"} ${supNeed}`})</span>
+            {" · "}
+            <span className="mono">{gestores}</span> chefe{gestores === 1 ? "" : "s"} de linha{" "}
+            <span className="text-muted-foreground">({gestNeed === 0 ? "não necessário abaixo de 24" : `necessário ${gestNeed}`})</span>
             {descobertos > 0
-              ? <span className="text-destructive font-medium"> · {descobertos} descobertos (−{(descobertos * 0.01).toFixed(2)} no prodMult)</span>
-              : <span className="text-gold"> · adequada</span>}
+              ? <span className="text-destructive font-medium"> · faltam supervisores — {descobertos} descoberto{descobertos===1?"":"s"} (−{(descobertos * 0.01).toFixed(2)} prodMult)</span>
+              : (supervisores > supNeed + 1 || (gestNeed === 0 && gestores > 0))
+                ? <span className="text-muted-foreground"> · estrutura sobredimensionada</span>
+                : <span className="text-gold"> · adequada</span>}
           </p>
-          {totalAlvo > 0 && scale < 1 && (
+          {totalAlvo > 0 && scale < 1 ? (
             <p className="mt-1 text-xs text-destructive">
-              Alvos ({totalAlvo} un) excedem a capacidade (≈ {Math.floor(totalAlvo * scale)} un).
+              Alvos ({totalAlvo} un) excedem a capacidade (≈ {Math.floor(totalAlvo * scale)} un, limitada por {rawLab < rawMach ? "mão-de-obra" : "máquinas"}).
             </p>
-          )}
+          ) : totalAlvo > 0 ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Capacidade suficiente · folga ≈ {Number.isFinite(rawInt) ? Math.max(0, Math.round((1 - totalAlvo / Math.max(1, totalAlvo * rawInt * (1 + subEff))) * 100)) : 0}%
+              {sub > 0 && (subEff * scaleInt > 0) && totalAlvo <= Math.floor(totalAlvo * scaleInt)
+                ? " · subcontratação disponível mas não utilizada"
+                : sub > 0
+                  ? ` · subcontratação a ${Math.round(sub*100)}% (+18% custo / −15% qualidade nas unidades externas)`
+                  : ""}
+            </p>
+          ) : null}
         </div>
       </section>
 

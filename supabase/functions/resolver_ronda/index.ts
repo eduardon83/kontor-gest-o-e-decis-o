@@ -32,10 +32,12 @@ type EstadoBase = {
   id: IdEstado;
 };
 
+export const MAQUINAS_INICIAIS = 3;
+
 const DEFAULT_ESTADO = (capital: number): EstadoBase => ({
   caixa: capital, ativos: 1, marca: 40, divida: 0,
   moral: 65, stress_org: 30, ambicao_org: 55,
-  maquinas: 6, forca_vendas: 3,
+  maquinas: MAQUINAS_INICIAIS, forca_vendas: 3,
   trabalhadores: 8, supervisores: 1, investigadores: 0,
   prejuizos_acum: 0, historia: [],
   id: { ...ID_INICIAL },

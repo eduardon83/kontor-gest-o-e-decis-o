@@ -44,12 +44,35 @@ export function Jornal() {
       {/* Faixa de dashboard */}
       <section className="grid gap-6 lg:grid-cols-3">
         <div className="rounded-sm border bg-card p-4">
-          <h3 className="font-serif text-lg">Demonstração de resultados</h3>
-          <dl className="mono mt-3 space-y-1 text-sm">
-            <Linha rotulo="Receita" valor={`${(JORNAL.demonstracao.receita / 1000).toFixed(1)}k €`} />
-            <Linha rotulo="Custos" valor={`(${(JORNAL.demonstracao.custos / 1000).toFixed(1)}k €)`} />
-            <Linha rotulo="EBITDA" valor={`${(JORNAL.demonstracao.ebitda / 1000).toFixed(1)}k €`} destaque />
-          </dl>
+          <div className="flex items-baseline justify-between">
+            <h3 className="font-serif text-lg">Demonstração de resultados</h3>
+            {fin && (
+              <span className="mono text-[10px] uppercase tracking-widest text-muted-foreground">T{turnoFin}</span>
+            )}
+          </div>
+          {fin ? (
+            <>
+              <dl className="mono mt-3 space-y-1 text-sm">
+                <Linha rotulo="Receita" valor={fmtEUR(fin.pnl.receita.total)} />
+                <Linha rotulo="Margem bruta" valor={fmtEUR(fin.pnl.margem_bruta)} />
+                <Linha rotulo="Resultado líquido" valor={fmtEUR(fin.pnl.resultado_liquido)} destaque />
+                <Linha rotulo="Caixa final" valor={fmtEUR(fin.balanco.ativo.caixa)} />
+              </dl>
+              <button
+                type="button"
+                onClick={() => setSala("gabinete")}
+                className="mono mt-3 text-[10px] uppercase tracking-widest text-gold hover:underline"
+              >
+                Ver detalhe no histórico →
+              </button>
+            </>
+          ) : (
+            <dl className="mono mt-3 space-y-1 text-sm">
+              <Linha rotulo="Receita" valor={`${(JORNAL.demonstracao.receita / 1000).toFixed(1)}k €`} />
+              <Linha rotulo="Custos" valor={`(${(JORNAL.demonstracao.custos / 1000).toFixed(1)}k €)`} />
+              <Linha rotulo="EBITDA" valor={`${(JORNAL.demonstracao.ebitda / 1000).toFixed(1)}k €`} destaque />
+            </dl>
+          )}
         </div>
 
         <div className="rounded-sm border bg-card p-4">

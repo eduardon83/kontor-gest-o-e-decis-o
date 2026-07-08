@@ -389,11 +389,12 @@ Deno.serve(async (req) => {
       const export_share = canal === "exportacao" ? 1 : 0;
       const id_orcamento = Math.max(0, Number(dec.CFO?.id_orcamento ?? 0));
 
-      // Apelo com profile emergente.
+      // Apelo com profile emergente — −15% qualidade só na fração subcontratada.
       const apelo: Record<Produto, number> = { cadeira: 0, mesa: 0, armario: 0 };
       for (const p of Object.keys(PRODUTOS) as Produto[]) {
         const t = tiers[p];
-        apelo[p] = (TIERS[t].qual * qualMult)
+        const qualEff = TIERS[t].qual * (1 - 0.15 * subFrac);
+        apelo[p] = (qualEff * qualMult)
           * Math.sqrt(0.5 + estado.marca / 100)
           * Math.pow(PRODUTOS[p].ref / Math.max(1, precos[p]), ELAST)
           * (1 + 0.04 * forca_vendas)

@@ -436,12 +436,13 @@ function PainelCapacidadeCOO({ valor, snapshot }: { valor: Record<string, any>; 
   const snap = (snapshot ?? {}) as Record<string, number | undefined>;
   const trabalhadores = Number(snap.trabalhadores ?? 0);
   const supervisores = Number(snap.supervisores ?? 0);
+  const gestores = Number((snap as any).gestores ?? 0);
   const maquinas = Number(snap.maquinas ?? 0) + Math.max(0, Number(valor.comprar_maquinas ?? 0));
   const moralOrg = Number(snap.moral ?? 50);
-  const ambicao = 50; // aproximação — não disponível no snapshot cliente
-  const stress = 40;
+  const ambicao = 50; const stress = 40;
 
-  const cobertos = Math.min(trabalhadores, supervisores * 8);
+  const supNeed = Math.ceil(trabalhadores / 8) || 0;
+  const gestNeed = trabalhadores > 24 ? Math.ceil(trabalhadores / 24) : 0;
   const descobertos = Math.max(0, trabalhadores - supervisores * 8);
   const coordPen = descobertos * 0.01;
   const prodMult = Math.min(1.4, Math.max(0.5,
@@ -467,31 +468,48 @@ function PainelCapacidadeCOO({ valor, snapshot }: { valor: Record<string, any>; 
     .reduce((s, p) => s + Number(alvo[p] ?? 0) * MACH_H[p], 0);
   const totalAlvo = Number(alvo.cadeira ?? 0) + Number(alvo.mesa ?? 0) + Number(alvo.armario ?? 0);
 
-  const scaleLab = labNeed > 0 ? capLabour / labNeed : Infinity;
-  const scaleMach = machNeed > 0 ? capMachine / machNeed : Infinity;
-  const scale = Math.min(1, scaleLab, scaleMach);
-  const capacidadeAlvo = Math.floor(totalAlvo * (scale === Infinity ? 1 : scale));
-  const limitante = scaleLab < scaleMach ? "mão-de-obra" : "máquinas";
-  const excede = totalAlvo > 0 && scale < 1;
+  // Igual ao resolver: scale interno (limita mão-de-obra/máquinas), com teto de subcontratação a 50%.
+  const rawLab = labNeed > 0 ? capLabour / labNeed : Infinity;
+  const rawMach = machNeed > 0 ? capMachine / machNeed : Infinity;
+  const rawInt = Math.min(rawLab, rawMach);
+  const scaleInt = Math.min(1, rawInt);
+  const sub = Math.max(0, Math.min(1, Number(valor.subcontratacao ?? 0)));
+  const subEff = Math.min(0.5, sub);
+  const scaleFinal = Math.min(1, scaleInt * (1 + subEff));
+  const limitante = rawLab < rawMach ? "mão-de-obra" : "máquinas";
+
+  const capIntUn = Math.floor(totalAlvo * scaleInt);
+  const capSubUn = Math.floor(capIntUn * subEff);
+  const producaoUn = Math.floor(totalAlvo * scaleFinal);
+  const subUn = Math.max(0, producaoUn - capIntUn);
+  const excede = totalAlvo > 0 && scaleFinal < 1;
+
+  // Máximo produzível (aproximação ao mix atual, sem limitar a 100% do alvo).
+  const maxIntUn = Number.isFinite(rawInt) ? Math.floor(totalAlvo * rawInt) : capIntUn;
+  const maxTotalUn = Number.isFinite(rawInt) ? Math.floor(totalAlvo * rawInt * (1 + subEff)) : producaoUn;
+  const folga = maxTotalUn > 0 && totalAlvo > 0 ? Math.max(0, 1 - totalAlvo / maxTotalUn) : 0;
 
   return (
     <div className="space-y-3 rounded-sm border border-gold/30 bg-gold/5 p-3">
       <div>
         <div className="mono text-[10px] uppercase tracking-widest text-gold">Capacidade estimada</div>
-        <p className="mt-1 text-sm">
-          {totalAlvo > 0 ? (
-            <>
-              ≈ <span className="mono font-semibold">{capacidadeAlvo}</span> de{" "}
+        {totalAlvo === 0 ? (
+          <p className="mt-1 text-sm">Define alvos de produção para veres a capacidade.</p>
+        ) : excede ? (
+          <>
+            <p className="mt-1 text-sm">
+              ≈ <span className="mono font-semibold">{producaoUn}</span> de{" "}
               <span className="mono">{totalAlvo}</span> un pedidas · limitada por{" "}
               <span className="font-semibold">{limitante}</span>
-            </>
-          ) : (
-            <>Define alvos de produção para veres a capacidade.</>
-          )}
-        </p>
-        {excede && (
-          <p className="mt-1 text-xs font-medium text-destructive">
-            Estás a pedir {totalAlvo}; a capacidade é ~{capacidadeAlvo}. Reduz alvos, sobe máquinas ou usa horas extra.
+            </p>
+            <p className="mt-1 text-xs font-medium text-destructive">
+              Estás a pedir {totalAlvo}; a capacidade é ~{producaoUn}. Reduz alvos, sobe máquinas, usa horas extra ou aumenta subcontratação.
+            </p>
+          </>
+        ) : (
+          <p className="mt-1 text-sm">
+            Capacidade suficiente · podes produzir até ~<span className="mono font-semibold">{maxTotalUn}</span> un
+            <span className="text-muted-foreground"> (folga ~{Math.round(folga * 100)}%)</span>
           </p>
         )}
         <div className="mono mt-2 grid grid-cols-2 gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -501,17 +519,58 @@ function PainelCapacidadeCOO({ valor, snapshot }: { valor: Record<string, any>; 
           <div>machNeed ≈ <span className="text-foreground">{Math.round(machNeed)}</span> h</div>
         </div>
       </div>
+
       <div className="border-t border-gold/20 pt-3">
-        <div className="mono text-[10px] uppercase tracking-widest text-gold">Cobertura de supervisão</div>
+        <div className="mono text-[10px] uppercase tracking-widest text-gold">Subcontratação</div>
+        {sub === 0 ? (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Desligada. Ativa para adicionar capacidade externa (até 50% da capacidade interna) — +18% custo e −15% qualidade nessas unidades.
+          </p>
+        ) : totalAlvo === 0 ? (
+          <p className="mt-1 text-xs text-muted-foreground">
+            {Math.round(subEff * 100)}% → +{Math.round(subEff * 100)}% de capacidade sobre a interna (+18% custo, −15% qualidade nessas unidades).
+          </p>
+        ) : subUn > 0 ? (
+          <p className="mt-1 text-sm">
+            A <span className="mono">{Math.round(sub * 100)}%</span>{sub > 0.5 && <span className="text-muted-foreground"> (aplicado {Math.round(subEff*100)}% — teto 50%)</span>} →
+            {" "}+<span className="mono font-semibold">{subUn}</span> un externas
+            <span className="text-muted-foreground"> (interna {capIntUn} un · disponível +{capSubUn} un)</span>
+            <span className="text-[11px] text-muted-foreground"> · custo +18%, qualidade −15% nessas unidades</span>
+          </p>
+        ) : (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Disponível mas não utilizada — a produção cabe na capacidade interna ({capIntUn} un ≥ {totalAlvo} un).
+          </p>
+        )}
+      </div>
+
+      <div className="border-t border-gold/20 pt-3">
+        <div className="mono text-[10px] uppercase tracking-widest text-gold">Hierarquia de gestão</div>
         <p className="mt-1 text-sm">
-          <span className="mono">{supervisores}</span> supervisor{supervisores === 1 ? "" : "es"} cobre{supervisores === 1 ? "" : "m"}{" "}
-          <span className="mono">{supervisores * 8}</span> de <span className="mono">{trabalhadores}</span> trabalhador{trabalhadores === 1 ? "" : "es"}
-          {descobertos > 0 ? (
-            <> · <span className="font-semibold text-destructive">{descobertos} descoberto{descobertos === 1 ? "" : "s"}</span> → penalização prodMult −{coordPen.toFixed(2)}</>
-          ) : (
-            <> · <span className="text-gold">rácio adequado</span> (1 supervisor por 8)</>
-          )}
+          <span className="mono">{trabalhadores}</span> trabalhador{trabalhadores === 1 ? "" : "es"} ·{" "}
+          <span className="mono">{supervisores}</span> supervisor{supervisores === 1 ? "" : "es"}{" "}
+          <span className="text-muted-foreground">
+            ({supNeed === 0 ? "nenhum necessário" : `bastam ${supNeed}`})
+          </span>
+          {" · "}
+          <span className="mono">{gestores}</span> chefe{gestores === 1 ? "" : "s"} de linha{" "}
+          <span className="text-muted-foreground">
+            ({gestNeed === 0 ? "não necessário abaixo de 24" : `necessário ${gestNeed}`})
+          </span>
         </p>
+        {descobertos > 0 && (
+          <p className="mt-1 text-xs font-medium text-destructive">
+            Faltam supervisores — {descobertos} trabalhador{descobertos === 1 ? "" : "es"} descoberto{descobertos === 1 ? "" : "s"} → penalização prodMult −{coordPen.toFixed(2)}
+          </p>
+        )}
+        {descobertos === 0 && (supervisores > supNeed + 1 || (gestNeed === 0 && gestores > 0)) && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Estrutura sobredimensionada para a dimensão atual — considera reafectar gestão a produção.
+          </p>
+        )}
+        {descobertos === 0 && supervisores >= supNeed && !(supervisores > supNeed + 1 || (gestNeed === 0 && gestores > 0)) && (
+          <p className="mt-1 text-xs text-gold">Estrutura adequada.</p>
+        )}
       </div>
     </div>
   );

@@ -14,6 +14,7 @@ import type { AcaoPessoa, Contratacao } from "@/lib/jogo/schema-decisoes";
 import {
   gerarRosterDemo, gerarCandidatosDemo, escolherRepresentanteDemo, novoDialogoRegistoDemo,
 } from "@/lib/jogo/demo-roster";
+import { derivarContagens, MAQUINAS_INICIAIS } from "@/lib/jogo/contagens";
 
 /* ============ Tipos partilhados ============ */
 export type Snapshot = Record<string, unknown> & {

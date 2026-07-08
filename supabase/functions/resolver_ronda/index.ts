@@ -18,7 +18,7 @@ import {
 } from "../_shared/constants.ts";
 import { gerarPoolCandidatos } from "../_shared/candidatos.ts";
 import {
-  ID_INICIAL, detetarPerfil, mediaJanela,
+  ID_INICIAL, ID_NOS, detetarPerfil, mediaJanela,
   proximoElegivel, type IdEstado, type JanelaDec, type Profile,
 } from "../_shared/id_arvore.ts";
 

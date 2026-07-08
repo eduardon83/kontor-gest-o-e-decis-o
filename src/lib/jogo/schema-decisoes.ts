@@ -34,6 +34,7 @@ export type PayloadCOO = {
   ritmo: Ritmo;                      // horas_extra deriva daqui (overtime=40)
   subcontratacao: number;            // 0..1
   id_modo: IdModo;
+  id_alvo?: string;                  // nó de I&D preferido (fallback: menor custo elegível)
 };
 
 export type PayloadCMO = {

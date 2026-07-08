@@ -1,19 +1,28 @@
 import { useEffect, useState } from "react";
 import { Check, Lock } from "lucide-react";
 import { useJogo } from "./JogoContext";
+import { EstadoEquipa } from "./EstadoEquipa";
 import type { Lugar } from "@/lib/jogo/tipos";
+
+const POSTURAS: { valor: string; titulo: string; descricao: string }[] = [
+  { valor: "Crescimento", titulo: "Crescimento", descricao: "Prioriza a expansão de vendas e capacidade produtiva." },
+  { valor: "Rentabilidade", titulo: "Rentabilidade", descricao: "Foca a margem e a geração de caixa." },
+  { valor: "Quota", titulo: "Quota", descricao: "Ganhar mercado mesmo com margem menor." },
+  { valor: "Equilibrio", titulo: "Equilíbrio", descricao: "Mistura crescimento, margem e prudência." },
+];
 
 /* Payload canónico (schema-decisoes.ts). Aqui apenas os campos essenciais que a UI edita. */
 const INICIAL: Record<Lugar, Record<string, unknown>> = {
-  CEO: { linhas_saida: [], teto_divida: 500_000, dividendos: 0, postura: "" },
+  CEO: { linhas_saida: [], teto_divida: 500_000, dividendos: 0, postura: "Equilibrio" },
   CFO: { markup: 0.35, emprestimo: 0, amortizar: 0, capex: 0, id_orcamento: 0, tesouraria: "equilibrado", usar_prejuizos: false, seguro: false },
   COO: { producao: { cadeira: 300, mesa: 150, armario: 80 }, tier: "standard", comprar_maquinas: 0, ritmo: "normal", subcontratacao: 0, id_modo: "interno" },
   CMO: { preco: { cadeira: 89, mesa: 249, armario: 399 }, marketing: 5000, canal: "grosso", forca_vendas: 4, pesquisa_mercado: 0 },
   CHRO: { salario: 1.0, formacao: 0, bonus: 0, acoes_pessoas: [], contratacoes: [] },
 };
 
+
 export function ControlosPasta({ lugar }: { lugar: Lugar }) {
-  const { podeEditar, submetidos, submeterLugar, decisoes, atualizarRascunho, rascunho, guardarNomeEmpresa, nomeEmpresa } = useJogo();
+  const { podeEditar, submetidos, submeterLugar, decisoes, atualizarRascunho, rascunho, guardarNomeEmpresa, nomeEmpresa, snapshotAtual } = useJogo();
   const editavel = podeEditar(lugar);
   const submetido = submetidos[lugar];
 
@@ -62,8 +71,25 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
             <NumericoField rotulo="Teto de dívida (€)" v={valor.teto_divida} min={0} max={2_000_000} step={10_000} onChange={(n) => up({ teto_divida: n })} disabled={!editavel} />
             <NumericoField rotulo="Dividendos (€)" v={valor.dividendos} min={0} max={500_000} step={1_000} onChange={(n) => up({ dividendos: n })} disabled={!editavel} />
             <Campo rotulo="Postura estratégica">
-              <textarea value={valor.postura ?? ""} disabled={!editavel} onChange={(e) => up({ postura: e.target.value })}
-                className="mt-1 w-full rounded-sm border bg-background px-3 py-2 text-sm disabled:opacity-60" rows={2} />
+              <div className="grid gap-1.5 sm:grid-cols-2">
+                {POSTURAS.map((p) => {
+                  const ativo = valor.postura === p.valor;
+                  return (
+                    <button
+                      key={p.valor}
+                      type="button"
+                      disabled={!editavel}
+                      onClick={() => up({ postura: p.valor })}
+                      className={`rounded-sm border p-2 text-left transition-colors disabled:opacity-60 ${
+                        ativo ? "border-gold bg-gold/10" : "border-border hover:bg-muted"
+                      }`}
+                    >
+                      <div className="font-serif text-sm">{p.titulo}</div>
+                      <div className="text-[11px] leading-snug text-muted-foreground">{p.descricao}</div>
+                    </button>
+                  );
+                })}
+              </div>
             </Campo>
           </>
         )}
@@ -75,8 +101,13 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
             <NumericoField rotulo="CAPEX (€)" v={valor.capex} min={0} max={500_000} step={5_000} onChange={(n) => up({ capex: n })} disabled={!editavel} />
             <NumericoField rotulo="Orçamento I&D (€)" v={valor.id_orcamento} min={0} max={200_000} step={1_000} onChange={(n) => up({ id_orcamento: n })} disabled={!editavel} />
             <Opcoes rotulo="Tesouraria" v={valor.tesouraria} opcoes={["conservador","equilibrado","agressivo"]} onChange={(o) => up({ tesouraria: o })} disabled={!editavel} />
-            <Toggle rotulo="Usar prejuízos acumulados" v={!!valor.usar_prejuizos} onChange={(t) => up({ usar_prejuizos: t })} disabled={!editavel} />
-            <Toggle rotulo="Seguro" v={!!valor.seguro} onChange={(t) => up({ seguro: t })} disabled={!editavel} />
+            <PrejuizosBox
+              prejuizos={Number((snapshotAtual as any)?.prejuizos_acum ?? 0)}
+              ativo={!!valor.usar_prejuizos}
+              onChange={(t) => up({ usar_prejuizos: t })}
+              disabled={!editavel}
+            />
+            <SeguroBox ativo={!!valor.seguro} onChange={(t) => up({ seguro: t })} disabled={!editavel} />
           </>
         )}
 
@@ -118,16 +149,18 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
           </>
         )}
 
-        <div className="flex items-center justify-between border-t pt-4">
-          <div className="mono text-[10px] uppercase tracking-widest text-muted-foreground">Estado da equipa</div>
-          <button
-            disabled={!editavel || submetido || ocupado}
-            onClick={submeter}
-            className="mono inline-flex items-center gap-1.5 rounded-sm bg-navy px-3 py-2 text-[11px] uppercase tracking-widest text-paper transition-colors hover:bg-deep disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {submetido && <Check className="h-3 w-3 text-gold" />}
-            {submetido ? "Submetido" : ocupado ? "A submeter…" : "Submeter o meu ecrã"}
-          </button>
+        <div className="space-y-3 border-t pt-4">
+          <EstadoEquipa />
+          <div className="flex justify-end">
+            <button
+              disabled={!editavel || submetido || ocupado}
+              onClick={submeter}
+              className="mono inline-flex items-center gap-1.5 rounded-sm bg-navy px-3 py-2 text-[11px] uppercase tracking-widest text-paper transition-colors hover:bg-deep disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submetido && <Check className="h-3 w-3 text-gold" />}
+              {submetido ? "Submetido" : ocupado ? "A submeter…" : "Submeter o meu ecrã"}
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -195,3 +228,59 @@ function Opcoes({ rotulo, v, opcoes, onChange, disabled }: { rotulo: string; v: 
     </Campo>
   );
 }
+
+function PrejuizosBox({ prejuizos, ativo, onChange, disabled }: { prejuizos: number; ativo: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+  const tem = prejuizos > 0;
+  return (
+    <Campo rotulo="Usar prejuízos acumulados">
+      <div className="space-y-2 rounded-sm border border-dashed border-border p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-xs text-muted-foreground">
+            {tem ? (
+              <>Prejuízos por usar: <span className="mono text-foreground">€{prejuizos.toLocaleString("pt-PT")}</span></>
+            ) : (
+              "Sem prejuízos acumulados a usar"
+            )}
+          </div>
+          <button
+            type="button"
+            disabled={disabled || !tem}
+            onClick={() => onChange(!ativo)}
+            className={`inline-flex h-6 w-11 items-center rounded-full border ${ativo ? "bg-gold border-gold" : "bg-muted border-border"} disabled:opacity-50`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${ativo ? "translate-x-6" : "translate-x-1"}`} />
+          </button>
+        </div>
+        <p className="text-[11px] leading-snug text-muted-foreground">
+          Ao usar, cria escudo fiscal que reduz o imposto do turno.
+        </p>
+      </div>
+    </Campo>
+  );
+}
+
+function SeguroBox({ ativo, onChange, disabled }: { ativo: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+  return (
+    <Campo rotulo="Seguro">
+      <div className="space-y-2 rounded-sm border border-dashed border-border p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-xs text-muted-foreground">
+            Custo: <span className="mono text-foreground">~€1.500/turno</span>
+          </div>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(!ativo)}
+            className={`inline-flex h-6 w-11 items-center rounded-full border ${ativo ? "bg-gold border-gold" : "bg-muted border-border"} disabled:opacity-50`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${ativo ? "translate-x-6" : "translate-x-1"}`} />
+          </button>
+        </div>
+        <p className="text-[11px] leading-snug text-muted-foreground">
+          Reduz em ~50% o impacto financeiro de eventos adversos neste turno.
+        </p>
+      </div>
+    </Campo>
+  );
+}
+

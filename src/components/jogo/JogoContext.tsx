@@ -438,7 +438,19 @@ export function JogoProvider({
       lugar: Lugar,
       opts: { tipo: string; nivel?: "L1" | "L2" | "L3"; custo?: number },
     ) => {
-      if (dados.modo !== "real" || !dados.ronda_id || !dados.equipa_id) return;
+      // Modo demo: gera resultado fictício local (só CHRO/dialogo tem UI activa por agora).
+      if (dados.modo !== "real") {
+        if (lugar === "CHRO" && opts.tipo === "dialogo") {
+          const rep = dados.colaboradores.find((c) => c.id === dados.chro_representante_id) ?? null;
+          const reg = novoDialogoRegistoDemo(rep, dados.colaboradores, dados.ronda_indice);
+          setDados((d) => ({
+            ...d,
+            pesquisas: { ...d.pesquisas, CHRO: [reg, ...(d.pesquisas.CHRO ?? [])] },
+          }));
+        }
+        return;
+      }
+      if (!dados.ronda_id || !dados.equipa_id) return;
       await fnPesquisa({
         data: {
           ronda_id: dados.ronda_id,

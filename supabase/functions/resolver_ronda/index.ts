@@ -785,8 +785,7 @@ Deno.serve(async (req) => {
           efeito: {}, payload: {}, timing: "resolucao",
         });
       }
-      const valor = Math.max(0, caixaNovaFinal) + ativosNovo * 30000 + marcaNovo * 1500 - dividaNova + Math.max(0, net) * 2;
-      resultadosInsert.push({ equipa_id: b.equipa_id, ronda_id: ronda.id, valor });
+      resultadosInsert.push({ equipa_id: b.equipa_id, ronda_id: ronda.id, valor: valorEmpresa });
 
 
       for (const a of b.auditoria) {

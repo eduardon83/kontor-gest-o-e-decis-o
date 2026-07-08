@@ -71,9 +71,43 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
             <NumericoField rotulo="Teto de dívida (€)" v={valor.teto_divida} min={0} max={2_000_000} step={10_000} onChange={(n) => up({ teto_divida: n })} disabled={!editavel} />
             <NumericoField rotulo="Dividendos (€)" v={valor.dividendos} min={0} max={500_000} step={1_000} onChange={(n) => up({ dividendos: n })} disabled={!editavel} />
             <Campo rotulo="Postura estratégica">
-              <textarea value={valor.postura ?? ""} disabled={!editavel} onChange={(e) => up({ postura: e.target.value })}
-                className="mt-1 w-full rounded-sm border bg-background px-3 py-2 text-sm disabled:opacity-60" rows={2} />
+              <div className="grid gap-1.5 sm:grid-cols-2">
+                {POSTURAS.map((p) => {
+                  const ativo = valor.postura === p.valor;
+                  return (
+                    <button
+                      key={p.valor}
+                      type="button"
+                      disabled={!editavel}
+                      onClick={() => up({ postura: p.valor })}
+                      className={`rounded-sm border p-2 text-left transition-colors disabled:opacity-60 ${
+                        ativo ? "border-gold bg-gold/10" : "border-border hover:bg-muted"
+                      }`}
+                    >
+                      <div className="font-serif text-sm">{p.titulo}</div>
+                      <div className="text-[11px] leading-snug text-muted-foreground">{p.descricao}</div>
+                    </button>
+                  );
+                })}
+              </div>
             </Campo>
+          </>
+        )}
+
+        {lugar === "CFO" && (
+          <>
+            <NumericoField rotulo="Empréstimo novo (€)" v={valor.emprestimo} min={0} max={500_000} step={5_000} onChange={(n) => up({ emprestimo: n })} disabled={!editavel} />
+            <NumericoField rotulo="Amortizar (€)" v={valor.amortizar} min={0} max={500_000} step={5_000} onChange={(n) => up({ amortizar: n })} disabled={!editavel} />
+            <NumericoField rotulo="CAPEX (€)" v={valor.capex} min={0} max={500_000} step={5_000} onChange={(n) => up({ capex: n })} disabled={!editavel} />
+            <NumericoField rotulo="Orçamento I&D (€)" v={valor.id_orcamento} min={0} max={200_000} step={1_000} onChange={(n) => up({ id_orcamento: n })} disabled={!editavel} />
+            <Opcoes rotulo="Tesouraria" v={valor.tesouraria} opcoes={["conservador","equilibrado","agressivo"]} onChange={(o) => up({ tesouraria: o })} disabled={!editavel} />
+            <PrejuizosBox
+              prejuizos={Number((snapshotAtual as any)?.prejuizos_acum ?? 0)}
+              ativo={!!valor.usar_prejuizos}
+              onChange={(t) => up({ usar_prejuizos: t })}
+              disabled={!editavel}
+            />
+            <SeguroBox ativo={!!valor.seguro} onChange={(t) => up({ seguro: t })} disabled={!editavel} />
           </>
         )}
 

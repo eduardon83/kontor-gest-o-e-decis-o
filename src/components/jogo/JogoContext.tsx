@@ -147,6 +147,9 @@ const Ctx = createContext<Estado | null>(null);
 function estadoVazio(): DadosJogo {
   // Estado pré-semeado para o modo demo/tutorial: turno 5 de 16, com histórico
   // coerente com HISTORICO_TURNOS / KPIS (últimos 4 turnos concluídos).
+  // Roster gerado UMA VEZ para partilhar entre CHRO, COO e chão de fábrica.
+  const roster = gerarRosterDemo("demo:marnera:t5");
+  const cont = derivarContagens(roster);
   return {
     modo: "demo",
     competicao_id: null,
@@ -173,12 +176,13 @@ function estadoVazio(): DadosJogo {
       moral: 68,
       quota: 18.4,
       prejuizos_acum: 24_500,
+      maquinas: MAQUINAS_INICIAIS,
+      trabalhadores: cont.trabalhadores,
+      supervisores: cont.supervisores,
+      investigadores: cont.investigadores,
     },
     snapshots: [],
-    colaboradores: (() => {
-      const roster = gerarRosterDemo("demo:marnera:t5");
-      return roster;
-    })(),
+    colaboradores: roster,
     rivais: [
       { equipa_id: "demo-a", nome: "Nordis", valor: 704_200 },
       { equipa_id: "demo-b", nome: "Torvel", valor: 588_100 },
@@ -199,10 +203,7 @@ function estadoVazio(): DadosJogo {
       },
     },
     pesquisas: {},
-    chro_representante_id: (() => {
-      const roster = gerarRosterDemo("demo:marnera:t5");
-      return escolherRepresentanteDemo(roster, 5);
-    })(),
+    chro_representante_id: escolherRepresentanteDemo(roster, 5),
     chro_candidatos: gerarCandidatosDemo("demo:marnera:t5:cands"),
   };
 }

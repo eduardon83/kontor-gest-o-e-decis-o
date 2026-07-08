@@ -317,7 +317,28 @@ Deno.serve(async (req) => {
         armario: Math.max(0, Number(producaoDec.armario ?? 0)),
       };
 
-      // Custo unitário — LEAN aplica −8% se desbloqueado.
+      // Capacidade — AUTOMACAO aplica ×1.15 ao capMachine.
+      const automacaoMult = idDesbl.has("AUTOMACAO") ? 1.15 : 1;
+      const capLabour = (trabalhadores * 160 + overtime * trabalhadores) * prodMult;
+      const capMachine = (estado.maquinas + comprarMaquinas) * 450 * prodMult * automacaoMult;
+      const labNeed = (Object.keys(PRODUTOS) as Produto[])
+        .reduce((s, p) => s + alvo[p] * PRODUTOS[p].mao * TIERS[tiers[p]].mao_mult, 0);
+      const machNeed = (Object.keys(PRODUTOS) as Produto[])
+        .reduce((s, p) => s + alvo[p] * MACH_H[p], 0);
+      // Capacidade interna (fração do alvo cobrível sem subcontratar).
+      const scaleInt = Math.min(1,
+        labNeed > 0 ? capLabour / labNeed : 1,
+        machNeed > 0 ? capMachine / machNeed : 1);
+      // Subcontratação — teto 50% da capacidade interna.
+      const subEff = Math.min(0.5, subcontratacao);
+      let scale = Math.min(1, scaleInt * (1 + subEff));
+      // Fração das unidades produzidas que é subcontratada (0..1).
+      const subFrac = scale > 0 ? Math.max(0, 1 - scaleInt / scale) : 0;
+      // eventCapMult é aplicado depois; aqui inicializamos a 1.
+      const eventCapMult = 1;
+      scale = scale * eventCapMult;
+
+      // Custo unitário — LEAN aplica −8% se desbloqueado; +18% só na fração subcontratada.
       const lw = CONST.custo_hora;
       const leanMult = idDesbl.has("LEAN") ? 0.92 : 1;
       const custoUnit: Record<Produto, number> = { cadeira: 0, mesa: 0, armario: 0 };
@@ -329,25 +350,9 @@ Deno.serve(async (req) => {
           + PRODUTOS[p].consumivel;
         custoUnit[p] = base
           * (1 + (ritmo === "horas_extra" ? 0.25 * (overtime / 40) : 0))
-          * (1 + subcontratacao * 0.18)
+          * (1 + 0.18 * subFrac)
           * leanMult;
       }
-
-      // Capacidade — AUTOMACAO aplica ×1.15 ao capMachine.
-      const automacaoMult = idDesbl.has("AUTOMACAO") ? 1.15 : 1;
-      const capLabour = (trabalhadores * 160 + overtime * trabalhadores) * prodMult;
-      const capMachine = (estado.maquinas + comprarMaquinas) * 450 * prodMult * automacaoMult;
-      const labNeed = (Object.keys(PRODUTOS) as Produto[])
-        .reduce((s, p) => s + alvo[p] * PRODUTOS[p].mao * TIERS[tiers[p]].mao_mult, 0);
-      const machNeed = (Object.keys(PRODUTOS) as Produto[])
-        .reduce((s, p) => s + alvo[p] * MACH_H[p], 0);
-      let scale = Math.min(1,
-        labNeed > 0 ? capLabour / labNeed : 1,
-        machNeed > 0 ? capMachine / machNeed : 1);
-      if (scale < 1 && subcontratacao > 0) scale = Math.min(1, scale + subcontratacao);
-      // eventCapMult é aplicado depois; aqui inicializamos a 1.
-      const eventCapMult = 1;
-      scale = scale * eventCapMult;
 
       const producao: Record<Produto, number> = {
         cadeira: Math.floor(alvo.cadeira * scale),
@@ -384,11 +389,12 @@ Deno.serve(async (req) => {
       const export_share = canal === "exportacao" ? 1 : 0;
       const id_orcamento = Math.max(0, Number(dec.CFO?.id_orcamento ?? 0));
 
-      // Apelo com profile emergente.
+      // Apelo com profile emergente — −15% qualidade só na fração subcontratada.
       const apelo: Record<Produto, number> = { cadeira: 0, mesa: 0, armario: 0 };
       for (const p of Object.keys(PRODUTOS) as Produto[]) {
         const t = tiers[p];
-        apelo[p] = (TIERS[t].qual * qualMult)
+        const qualEff = TIERS[t].qual * (1 - 0.15 * subFrac);
+        apelo[p] = (qualEff * qualMult)
           * Math.sqrt(0.5 + estado.marca / 100)
           * Math.pow(PRODUTOS[p].ref / Math.max(1, precos[p]), ELAST)
           * (1 + 0.04 * forca_vendas)

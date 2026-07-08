@@ -176,7 +176,20 @@ function estadoVazio(): DadosJogo {
       { equipa_id: "demo-b", nome: "Torvel", valor: 588_100 },
       { equipa_id: "demo-c", nome: "Lumiar", valor: 462_900 },
     ],
-    decisoes: {},
+    decisoes: {
+      CEO: {
+        lugar: "CEO",
+        payload: { postura: "Equilibrio" },
+        submetido_em: new Date().toISOString(),
+        submetido_por: "demo",
+      },
+      CFO: {
+        lugar: "CFO",
+        payload: {},
+        submetido_em: new Date().toISOString(),
+        submetido_por: "demo",
+      },
+    },
     pesquisas: {},
     chro_representante_id: null,
     chro_candidatos: [],

@@ -22,7 +22,7 @@ const INICIAL: Record<Lugar, Record<string, unknown>> = {
 
 
 export function ControlosPasta({ lugar }: { lugar: Lugar }) {
-  const { podeEditar, submetidos, submeterLugar, decisoes, atualizarRascunho, rascunho, guardarNomeEmpresa, nomeEmpresa } = useJogo();
+  const { podeEditar, submetidos, submeterLugar, decisoes, atualizarRascunho, rascunho, guardarNomeEmpresa, nomeEmpresa, snapshotAtual } = useJogo();
   const editavel = podeEditar(lugar);
   const submetido = submetidos[lugar];
 

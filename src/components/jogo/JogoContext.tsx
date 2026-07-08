@@ -11,6 +11,9 @@ import { carregarChro as carregarChroFn } from "@/lib/chro.functions";
 import type { Lugar, Acesso, SalaId } from "@/lib/jogo/tipos";
 import { LUGARES } from "@/lib/jogo/tipos";
 import type { AcaoPessoa, Contratacao } from "@/lib/jogo/schema-decisoes";
+import {
+  gerarRosterDemo, gerarCandidatosDemo, escolherRepresentanteDemo, novoDialogoRegistoDemo,
+} from "@/lib/jogo/demo-roster";
 
 /* ============ Tipos partilhados ============ */
 export type Snapshot = Record<string, unknown> & {
@@ -171,7 +174,10 @@ function estadoVazio(): DadosJogo {
       prejuizos_acum: 24_500,
     },
     snapshots: [],
-    colaboradores: [],
+    colaboradores: (() => {
+      const roster = gerarRosterDemo("demo:marnera:t5");
+      return roster;
+    })(),
     rivais: [
       { equipa_id: "demo-a", nome: "Nordis", valor: 704_200 },
       { equipa_id: "demo-b", nome: "Torvel", valor: 588_100 },
@@ -192,8 +198,11 @@ function estadoVazio(): DadosJogo {
       },
     },
     pesquisas: {},
-    chro_representante_id: null,
-    chro_candidatos: [],
+    chro_representante_id: (() => {
+      const roster = gerarRosterDemo("demo:marnera:t5");
+      return escolherRepresentanteDemo(roster, 5);
+    })(),
+    chro_candidatos: gerarCandidatosDemo("demo:marnera:t5:cands"),
   };
 }
 
@@ -429,7 +438,19 @@ export function JogoProvider({
       lugar: Lugar,
       opts: { tipo: string; nivel?: "L1" | "L2" | "L3"; custo?: number },
     ) => {
-      if (dados.modo !== "real" || !dados.ronda_id || !dados.equipa_id) return;
+      // Modo demo: gera resultado fictício local (só CHRO/dialogo tem UI activa por agora).
+      if (dados.modo !== "real") {
+        if (lugar === "CHRO" && opts.tipo === "dialogo") {
+          const rep = dados.colaboradores.find((c) => c.id === dados.chro_representante_id) ?? null;
+          const reg = novoDialogoRegistoDemo(rep, dados.colaboradores, dados.ronda_indice);
+          setDados((d) => ({
+            ...d,
+            pesquisas: { ...d.pesquisas, CHRO: [reg, ...(d.pesquisas.CHRO ?? [])] },
+          }));
+        }
+        return;
+      }
+      if (!dados.ronda_id || !dados.equipa_id) return;
       await fnPesquisa({
         data: {
           ronda_id: dados.ronda_id,
@@ -466,6 +487,26 @@ export function JogoProvider({
 
   const adicionarAcaoPessoa = useCallback(
     (a: AcaoPessoa) => {
+      // Demo: aplica o efeito directamente no estado local (sem passar por rascunho).
+      if (dados.modo !== "real") {
+        setDados((d) => {
+          const cols = [...d.colaboradores];
+          const i = cols.findIndex((c) => c.id === a.colaborador_id);
+          if (i < 0) return d;
+          const c = cols[i];
+          if (a.tipo === "despedir") {
+            cols.splice(i, 1);
+          } else if (a.tipo === "promover_supervisor") {
+            cols[i] = { ...c, papel_org: "supervisor", salario_mult: 1.4, motivacao: Math.min(100, c.motivacao + 5) };
+          } else if (a.tipo === "promover_chefe_linha") {
+            cols[i] = { ...c, papel_org: "gestor_linha", salario_mult: 2.0, motivacao: Math.min(100, c.motivacao + 5) };
+          } else if (a.tipo === "promover_merito") {
+            cols[i] = { ...c, salario_mult: Number((c.salario_mult * 1.12).toFixed(3)), motivacao: Math.min(100, c.motivacao + 5) };
+          }
+          return { ...d, colaboradores: cols };
+        });
+        return;
+      }
       const { acoes, contr } = lerCHRORasc();
       const outros = acoes.filter((x) => x.colaborador_id !== a.colaborador_id);
       setRascunho((r) => ({
@@ -473,11 +514,12 @@ export function JogoProvider({
         CHRO: { ...(r.CHRO ?? {}), acoes_pessoas: [...outros, a], contratacoes: contr },
       }));
     },
-    [lerCHRORasc],
+    [dados.modo, lerCHRORasc],
   );
 
   const removerAcaoPessoa = useCallback(
     (colaborador_id: string) => {
+      if (dados.modo !== "real") return; // demo aplica já: nada a retirar do rascunho
       const { acoes, contr } = lerCHRORasc();
       setRascunho((r) => ({
         ...r,
@@ -488,11 +530,35 @@ export function JogoProvider({
         },
       }));
     },
-    [lerCHRORasc],
+    [dados.modo, lerCHRORasc],
   );
 
   const adicionarContratacao = useCallback(
     (c: Contratacao) => {
+      if (dados.modo !== "real") {
+        setDados((d) => {
+          const cand = d.chro_candidatos.find((x) => x.id === c.candidato_id);
+          if (!cand) return d;
+          if (d.colaboradores.some((k) => k.id === `demo-col-hire-${cand.id}`)) return d;
+          const novo = {
+            id: `demo-col-hire-${cand.id}`,
+            arquetipo: cand.arquetipo,
+            avatar_variante: cand.avatar_variante,
+            papel_org: "trabalhador",
+            motivacao: Number(cand.atributos.motivacao ?? 60),
+            stress_individual: Number(cand.atributos.stress ?? 30),
+            antiguidade: 0,
+            necessidades: {},
+            salario_mult: cand.salario_mult,
+          } as Colaborador;
+          return {
+            ...d,
+            colaboradores: [...d.colaboradores, novo],
+            chro_candidatos: d.chro_candidatos.filter((x) => x.id !== c.candidato_id),
+          };
+        });
+        return;
+      }
       const { acoes, contr } = lerCHRORasc();
       if (contr.some((x) => x.candidato_id === c.candidato_id)) return;
       setRascunho((r) => ({
@@ -500,11 +566,12 @@ export function JogoProvider({
         CHRO: { ...(r.CHRO ?? {}), acoes_pessoas: acoes, contratacoes: [...contr, c] },
       }));
     },
-    [lerCHRORasc],
+    [dados.modo, lerCHRORasc],
   );
 
   const removerContratacao = useCallback(
     (candidato_id: string) => {
+      if (dados.modo !== "real") return; // demo aplica já
       const { acoes, contr } = lerCHRORasc();
       setRascunho((r) => ({
         ...r,
@@ -515,7 +582,7 @@ export function JogoProvider({
         },
       }));
     },
-    [lerCHRORasc],
+    [dados.modo, lerCHRORasc],
   );
 
 

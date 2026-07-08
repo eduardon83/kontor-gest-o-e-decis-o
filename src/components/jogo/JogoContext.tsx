@@ -621,9 +621,28 @@ export function JogoProvider({
     [fnNomePerfil],
   );
 
+  // Contagens derivadas do roster — fonte única partilhada por CHRO/COO/chão.
+  const snapshotEnriquecido = useMemo<Snapshot | null>(() => {
+    const base = dados.snapshotAtual;
+    const c = derivarContagens(dados.colaboradores);
+    const maquinasBase = Number((base as any)?.maquinas);
+    const maquinas = Number.isFinite(maquinasBase) && maquinasBase > 0
+      ? maquinasBase
+      : MAQUINAS_INICIAIS;
+    return {
+      ...(base ?? {}),
+      trabalhadores: c.trabalhadores,
+      supervisores: c.supervisores,
+      investigadores: c.investigadores,
+      gestores: c.gestores,
+      maquinas,
+    };
+  }, [dados.snapshotAtual, dados.colaboradores]);
+
   const value = useMemo<Estado>(
     () => ({
       ...dados,
+      snapshotAtual: snapshotEnriquecido,
       acesso,
       setAcesso,
       lugarVisto,
@@ -648,7 +667,7 @@ export function JogoProvider({
       recarregar: carregar,
       aCarregar,
     }),
-    [dados, acesso, lugarVisto, sala, podeEditar, submetidos, rascunho, atualizarRascunho, submeterLugar, usarPesquisa, pesquisaUsada, chroAcoesPendentes, adicionarAcaoPessoa, removerAcaoPessoa, adicionarContratacao, removerContratacao, guardarNomeEmpresa, guardarNomePerfil, carregar, aCarregar],
+    [dados, snapshotEnriquecido, acesso, lugarVisto, sala, podeEditar, submetidos, rascunho, atualizarRascunho, submeterLugar, usarPesquisa, pesquisaUsada, chroAcoesPendentes, adicionarAcaoPessoa, removerAcaoPessoa, adicionarContratacao, removerContratacao, guardarNomeEmpresa, guardarNomePerfil, carregar, aCarregar],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

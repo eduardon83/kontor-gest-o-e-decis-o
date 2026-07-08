@@ -4,7 +4,8 @@ import { useJogo } from "./JogoContext";
 import type { Kpi } from "@/lib/jogo/dados-exemplo";
 import { HISTORICO_TURNOS, KPIS } from "@/lib/jogo/dados-exemplo";
 import { LUGARES, type Lugar } from "@/lib/jogo/tipos";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, ChevronRight, Download } from "lucide-react";
+import { PnLBalanco, relatorioParaCSV, descarregarCSV } from "./RelatorioFinanceiro";
 
 function fmt(v: number, u: string) {
   if (u === "€") return `${(v / 1000).toFixed(1)}k €`;

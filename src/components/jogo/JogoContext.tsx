@@ -174,7 +174,10 @@ function estadoVazio(): DadosJogo {
       prejuizos_acum: 24_500,
     },
     snapshots: [],
-    colaboradores: [],
+    colaboradores: (() => {
+      const roster = gerarRosterDemo("demo:marnera:t5");
+      return roster;
+    })(),
     rivais: [
       { equipa_id: "demo-a", nome: "Nordis", valor: 704_200 },
       { equipa_id: "demo-b", nome: "Torvel", valor: 588_100 },
@@ -195,8 +198,11 @@ function estadoVazio(): DadosJogo {
       },
     },
     pesquisas: {},
-    chro_representante_id: null,
-    chro_candidatos: [],
+    chro_representante_id: (() => {
+      const roster = gerarRosterDemo("demo:marnera:t5");
+      return escolherRepresentanteDemo(roster, 5);
+    })(),
+    chro_candidatos: gerarCandidatosDemo("demo:marnera:t5:cands"),
   };
 }
 

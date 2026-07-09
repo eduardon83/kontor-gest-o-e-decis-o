@@ -73,6 +73,7 @@ export type PesquisaRegisto = {
   resultado: Record<string, unknown> | null;
   criado_em: string;
   ronda_indice: number | null;
+  ronda_id: string | null;
   lugar: Lugar;
 };
 

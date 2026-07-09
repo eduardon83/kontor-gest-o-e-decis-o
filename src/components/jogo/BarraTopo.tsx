@@ -96,7 +96,8 @@ export function BarraTopo() {
           <Bloco rotulo="Valor" valor={`${(valor / 1000).toFixed(0)}k €`} mono />
 
           <select
-            value={acesso.modo === "docente" ? "docente" : acesso.meuLugar}
+            value={acessoValor}
+            disabled={condutor}
             onChange={(e) => mudarAcesso(e.target.value)}
             className="mono cursor-pointer rounded-sm border bg-transparent px-2 py-1 text-[11px] uppercase tracking-widest text-paper focus:outline-none"
             style={{ borderColor: "var(--gold)" }}

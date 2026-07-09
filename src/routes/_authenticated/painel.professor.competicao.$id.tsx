@@ -97,6 +97,17 @@ function Pagina() {
                     <td className="text-right font-mono text-xs">
                       {eq.completo ? <span className="text-gold">completo</span> : <span className="text-muted-foreground">pendente</span>}
                     </td>
+                    <td className="pl-3 text-right">
+                      {!eq.is_ia && (
+                        <Link
+                          to="/painel/professor/conduzir/$competicao/$equipa"
+                          params={{ competicao: id, equipa: eq.id }}
+                          className="mono inline-block rounded-sm border border-gold px-2 py-1 text-[10px] uppercase tracking-widest text-gold hover:bg-gold/10"
+                        >
+                          Conduzir
+                        </Link>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

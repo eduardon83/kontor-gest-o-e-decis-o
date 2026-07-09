@@ -24,6 +24,7 @@ import { Route as AuthenticatedPainelAdminEscolarRouteImport } from './routes/_a
 import { Route as ApiPublicHooksResolverTickRouteImport } from './routes/api/public/hooks/resolver-tick'
 import { Route as AuthenticatedPainelJogadorCompeticaoRouteImport } from './routes/_authenticated/painel.jogador.competicao'
 import { Route as AuthenticatedPainelProfessorCompeticaoIdRouteImport } from './routes/_authenticated/painel.professor.competicao.$id'
+import { Route as AuthenticatedPainelProfessorConduzirCompeticaoEquipaRouteImport } from './routes/_authenticated/painel.professor.conduzir.$competicao.$equipa'
 
 const EntrarHansaRoute = EntrarHansaRouteImport.update({
   id: '/entrar-hansa',
@@ -107,6 +108,12 @@ const AuthenticatedPainelProfessorCompeticaoIdRoute =
     path: '/competicao/$id',
     getParentRoute: () => AuthenticatedPainelProfessorRoute,
   } as any)
+const AuthenticatedPainelProfessorConduzirCompeticaoEquipaRoute =
+  AuthenticatedPainelProfessorConduzirCompeticaoEquipaRouteImport.update({
+    id: '/conduzir/$competicao/$equipa',
+    path: '/conduzir/$competicao/$equipa',
+    getParentRoute: () => AuthenticatedPainelProfessorRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -123,6 +130,7 @@ export interface FileRoutesByFullPath {
   '/painel/jogador/competicao': typeof AuthenticatedPainelJogadorCompeticaoRoute
   '/api/public/hooks/resolver-tick': typeof ApiPublicHooksResolverTickRoute
   '/painel/professor/competicao/$id': typeof AuthenticatedPainelProfessorCompeticaoIdRoute
+  '/painel/professor/conduzir/$competicao/$equipa': typeof AuthenticatedPainelProfessorConduzirCompeticaoEquipaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -139,6 +147,7 @@ export interface FileRoutesByTo {
   '/painel/jogador/competicao': typeof AuthenticatedPainelJogadorCompeticaoRoute
   '/api/public/hooks/resolver-tick': typeof ApiPublicHooksResolverTickRoute
   '/painel/professor/competicao/$id': typeof AuthenticatedPainelProfessorCompeticaoIdRoute
+  '/painel/professor/conduzir/$competicao/$equipa': typeof AuthenticatedPainelProfessorConduzirCompeticaoEquipaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -157,6 +166,7 @@ export interface FileRoutesById {
   '/_authenticated/painel/jogador/competicao': typeof AuthenticatedPainelJogadorCompeticaoRoute
   '/api/public/hooks/resolver-tick': typeof ApiPublicHooksResolverTickRoute
   '/_authenticated/painel/professor/competicao/$id': typeof AuthenticatedPainelProfessorCompeticaoIdRoute
+  '/_authenticated/painel/professor/conduzir/$competicao/$equipa': typeof AuthenticatedPainelProfessorConduzirCompeticaoEquipaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -175,6 +185,7 @@ export interface FileRouteTypes {
     | '/painel/jogador/competicao'
     | '/api/public/hooks/resolver-tick'
     | '/painel/professor/competicao/$id'
+    | '/painel/professor/conduzir/$competicao/$equipa'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -191,6 +202,7 @@ export interface FileRouteTypes {
     | '/painel/jogador/competicao'
     | '/api/public/hooks/resolver-tick'
     | '/painel/professor/competicao/$id'
+    | '/painel/professor/conduzir/$competicao/$equipa'
   id:
     | '__root__'
     | '/'
@@ -208,6 +220,7 @@ export interface FileRouteTypes {
     | '/_authenticated/painel/jogador/competicao'
     | '/api/public/hooks/resolver-tick'
     | '/_authenticated/painel/professor/competicao/$id'
+    | '/_authenticated/painel/professor/conduzir/$competicao/$equipa'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -326,6 +339,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPainelProfessorCompeticaoIdRouteImport
       parentRoute: typeof AuthenticatedPainelProfessorRoute
     }
+    '/_authenticated/painel/professor/conduzir/$competicao/$equipa': {
+      id: '/_authenticated/painel/professor/conduzir/$competicao/$equipa'
+      path: '/conduzir/$competicao/$equipa'
+      fullPath: '/painel/professor/conduzir/$competicao/$equipa'
+      preLoaderRoute: typeof AuthenticatedPainelProfessorConduzirCompeticaoEquipaRouteImport
+      parentRoute: typeof AuthenticatedPainelProfessorRoute
+    }
   }
 }
 
@@ -346,12 +366,15 @@ const AuthenticatedPainelJogadorRouteWithChildren =
 
 interface AuthenticatedPainelProfessorRouteChildren {
   AuthenticatedPainelProfessorCompeticaoIdRoute: typeof AuthenticatedPainelProfessorCompeticaoIdRoute
+  AuthenticatedPainelProfessorConduzirCompeticaoEquipaRoute: typeof AuthenticatedPainelProfessorConduzirCompeticaoEquipaRoute
 }
 
 const AuthenticatedPainelProfessorRouteChildren: AuthenticatedPainelProfessorRouteChildren =
   {
     AuthenticatedPainelProfessorCompeticaoIdRoute:
       AuthenticatedPainelProfessorCompeticaoIdRoute,
+    AuthenticatedPainelProfessorConduzirCompeticaoEquipaRoute:
+      AuthenticatedPainelProfessorConduzirCompeticaoEquipaRoute,
   }
 
 const AuthenticatedPainelProfessorRouteWithChildren =

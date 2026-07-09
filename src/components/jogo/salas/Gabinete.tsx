@@ -4,6 +4,7 @@ import { KpiDashboard } from "../KpiDashboard";
 import { ObjetoPesquisa } from "../ObjetoPesquisa";
 import { ControlosPasta } from "../ControlosPasta";
 import { RosterCHRO } from "./RosterCHRO";
+import { PainelCustosComprometidos } from "../PainelCustosComprometidos";
 
 export function Gabinete() {
   const { lugarVisto } = useJogo();
@@ -19,6 +20,7 @@ export function Gabinete() {
         <ControlosPasta lugar={lugarVisto} />
       </div>
 
+      {lugarVisto === "CFO" && <PainelCustosComprometidos />}
       {lugarVisto === "CHRO" && <RosterCHRO />}
     </div>
   );

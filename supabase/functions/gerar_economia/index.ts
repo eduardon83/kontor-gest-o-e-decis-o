@@ -8,6 +8,7 @@ import {
   GUARDRAILS,
   PRODUTOS,
 } from "../_shared/constants.ts";
+import { nomePt, sexoDaVariante } from "../_shared/nomes-pt.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });

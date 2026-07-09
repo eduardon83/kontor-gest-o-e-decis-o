@@ -289,9 +289,11 @@ function PoolCandidatos({
             const cand = candidatos.find((c) => c.id === ct.candidato_id);
             return (
               <li key={ct.candidato_id} className="flex items-center justify-between px-4 py-2 text-sm">
-                <div>
+                <div className="min-w-0">
                   <span className="font-serif">
-                    Contratação {cand ? `· ${cand.arquetipo}` : "· candidato antigo"}
+                    {cand
+                      ? `Contratar ${(cand.nome && cand.nome.trim()) || "candidato"} · ${cand.arquetipo}`
+                      : "Contratação · candidato antigo"}
                   </span>
                   <div className="mono text-[10px] uppercase tracking-widest text-muted-foreground">
                     {cand ? `${fmtEur(cand.salario_mensal_pedido)}/mês` : "não visível no pool actual"}

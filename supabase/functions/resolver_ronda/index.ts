@@ -635,6 +635,7 @@ Deno.serve(async (req) => {
         if (!cand) { b.auditoria.push({ acao: "contratacao_invalida", payload: ct as never }); continue; }
         colabsInsertsGlobal.push({
           equipa_id: b.equipa_id,
+          nome: cand.nome,
           papel_org: "trabalhador",
           arquetipo: cand.arquetipo,
           avatar_variante: cand.avatar_variante,

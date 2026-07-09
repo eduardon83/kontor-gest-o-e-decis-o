@@ -227,15 +227,21 @@ function estadoVazio(): DadosJogo {
 export function JogoProvider({
   equipaId,
   lugarInicial,
+  condutorCompeticaoId,
   children,
 }: {
   equipaId?: string | null;
   lugarInicial?: Lugar | null;
+  /** Se preenchido, entra em MODO CONDUÇÃO (professor a conduzir uma equipa real). */
+  condutorCompeticaoId?: string | null;
   children: ReactNode;
 }) {
+  const condutor = !!condutorCompeticaoId;
   const [dados, setDados] = useState<DadosJogo>(estadoVazio());
   const [acesso, setAcesso] = useState<Acesso>(
-    equipaId && lugarInicial
+    condutor
+      ? { modo: "condutor" }
+      : equipaId && lugarInicial
       ? { modo: "jogador", meuLugar: lugarInicial }
       : { modo: "docente" },
   );
@@ -245,6 +251,8 @@ export function JogoProvider({
   const [aCarregar, setACarregar] = useState<boolean>(!!equipaId);
 
   const fnSubmeter = useServerFn(submeterDecisaoFn);
+  const fnSubmeterCondutor = useServerFn(submeterCondutorFn);
+  const fnResolverTurno = useServerFn(resolverTurnoFn);
   const fnPesquisa = useServerFn(executarAcaoInfo);
   const fnNomeEmpresa = useServerFn(atualizarNomeEmpresaFn);
   const fnNomePerfil = useServerFn(atualizarNomePerfilFn);

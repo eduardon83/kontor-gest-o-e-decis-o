@@ -226,7 +226,7 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
 
         <div className="space-y-3 border-t pt-4">
           <EstadoEquipa />
-          <div className="flex justify-end">
+          <TotalComprometidoCompacto />
             <button
               disabled={!editavel || submetido || ocupado}
               onClick={submeter}

@@ -16,12 +16,27 @@ export const carregarChro = createServerFn({ method: "POST" })
     }).parse(raw),
   )
   .handler(async ({ data, context }) => {
-    // Garante que o utilizador é membro da equipa.
+    // Garante que o utilizador é membro da equipa OU dono da competição
+    // (professor em modo condução) OU admin_escolar / super_admin.
     const { supabase, userId } = context;
     const { data: mem } = await supabase
       .from("membros_equipa").select("lugar")
       .eq("equipa_id", data.equipa_id).eq("user_id", userId).maybeSingle();
-    if (!mem) throw new Error("Não é membro desta equipa.");
+    if (!mem) {
+      const { data: perfil } = await supabase
+        .from("perfis").select("papel").eq("id", userId).maybeSingle();
+      const papel = perfil?.papel;
+      if (papel !== "super_admin" && papel !== "admin_escolar") {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data: eq } = await supabaseAdmin
+          .from("equipas")
+          .select("mercados!inner(competicoes!inner(criado_por))")
+          .eq("id", data.equipa_id)
+          .maybeSingle();
+        const dono = (eq as any)?.mercados?.competicoes?.criado_por;
+        if (dono !== userId) throw new Error("Sem autorização sobre esta equipa.");
+      }
+    }
 
     const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, Lock } from "lucide-react";
 import { useJogo } from "./JogoContext";
 import { EstadoEquipa } from "./EstadoEquipa";
+import { TotalComprometidoCompacto } from "./PainelCustosComprometidos";
 import type { Lugar } from "@/lib/jogo/tipos";
 
 const POSTURAS: { valor: string; titulo: string; descricao: string }[] = [
@@ -225,6 +226,7 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
 
         <div className="space-y-3 border-t pt-4">
           <EstadoEquipa />
+          <TotalComprometidoCompacto />
           <div className="flex justify-end">
             <button
               disabled={!editavel || submetido || ocupado}

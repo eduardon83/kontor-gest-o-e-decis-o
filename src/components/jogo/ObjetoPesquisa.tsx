@@ -149,7 +149,7 @@ export function ObjetoPesquisa({ lugar }: { lugar: Lugar }) {
               <div>
                 Representante deste turno:{" "}
                 <strong className="font-serif text-foreground">
-                  #{rep.id.slice(0, 4).toUpperCase()}
+                  {(rep.nome && rep.nome.trim()) || "Colaborador"}
                 </strong>{" "}
                 <span className="mono text-[10px] uppercase tracking-widest text-gold">
                   {rep.arquetipo ?? "—"}

@@ -36,4 +36,7 @@ export const SALAS = [
 ] as const;
 export type SalaId = (typeof SALAS)[number]["id"];
 
-export type Acesso = { modo: "docente" } | { modo: "jogador"; meuLugar: Lugar };
+export type Acesso =
+  | { modo: "docente" }
+  | { modo: "jogador"; meuLugar: Lugar }
+  | { modo: "condutor" };

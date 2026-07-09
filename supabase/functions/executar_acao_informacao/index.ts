@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
       case "dialogo": {
         // Sem níveis — representante determinístico do turno.
         const { data: cols } = await sb.from("colaboradores")
-          .select("id, arquetipo, motivacao, stress_individual, competencia, necessidades, papel_org, salario_mult")
+          .select("id, nome, arquetipo, motivacao, stress_individual, competencia, necessidades, papel_org, salario_mult, antiguidade, avatar_variante")
           .eq("equipa_id", acao.equipa_id)
           .eq("ativo", true);
         const ids = (cols ?? []).map((c) => c.id);
@@ -133,7 +133,10 @@ Deno.serve(async (req) => {
         resultado = alvo ? {
           confianca: 1,
           representante: {
-            id: alvo.id, arquetipo: alvo.arquetipo, papel_org: alvo.papel_org,
+            id: alvo.id, nome: alvo.nome ?? null, arquetipo: alvo.arquetipo,
+            papel_org: alvo.papel_org,
+            avatar_variante: Number(alvo.avatar_variante ?? 1),
+            antiguidade: Number(alvo.antiguidade ?? 0),
             moral: clamp(Number(alvo.motivacao), 0, 100),
             stress: clamp(Number(alvo.stress_individual), 0, 100),
             competencia: clamp(Number(alvo.competencia), 0, 100),

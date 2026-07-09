@@ -363,6 +363,7 @@ export function JogoProvider({
           resultado: (p.resultado ?? null) as Record<string, unknown> | null,
           criado_em: p.criado_em,
           ronda_indice: p.rondas?.indice ?? null,
+          ronda_id: p.ronda_id ?? null,
           lugar: lg,
         });
       }

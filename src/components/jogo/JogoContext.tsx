@@ -13,6 +13,8 @@ import { LUGARES } from "@/lib/jogo/tipos";
 import type { AcaoPessoa, Contratacao } from "@/lib/jogo/schema-decisoes";
 import {
   gerarRosterDemo, gerarCandidatosDemo, escolherRepresentanteDemo, novoDialogoRegistoDemo,
+  gerarResultadoEstudoEconomicoDemo, gerarResultadoPesquisaMercadoDemo,
+  gerarResultadoConcorrenciaDemo, gerarResultadoAnaliseIdDemo, novoPesquisaRegistoDemo,
 } from "@/lib/jogo/demo-roster";
 import { derivarContagens, MAQUINAS_INICIAIS } from "@/lib/jogo/contagens";
 import { nomePt, sexoDaVariante } from "@/lib/jogo/nomes-pt";
@@ -71,6 +73,7 @@ export type PesquisaRegisto = {
   resultado: Record<string, unknown> | null;
   criado_em: string;
   ronda_indice: number | null;
+  ronda_id: string | null;
   lugar: Lugar;
 };
 
@@ -360,6 +363,7 @@ export function JogoProvider({
           resultado: (p.resultado ?? null) as Record<string, unknown> | null,
           criado_em: p.criado_em,
           ronda_indice: p.rondas?.indice ?? null,
+          ronda_id: p.ronda_id ?? null,
           lugar: lg,
         });
       }
@@ -434,7 +438,20 @@ export function JogoProvider({
 
   const submeterLugar = useCallback(
     async (lugar: Lugar) => {
-      if (dados.modo !== "real" || !dados.ronda_id || !dados.equipa_id) return;
+      // Demo: alterna submissão localmente (permite reabrir para experimentar).
+      if (dados.modo !== "real") {
+        setDados((d) => {
+          const atual = d.decisoes[lugar];
+          const jaSubmetido = !!atual?.submetido_em;
+          const payload = { ...(atual?.payload ?? {}), ...(rascunho[lugar] ?? {}) };
+          const proxima: DecisaoRegisto = jaSubmetido
+            ? { lugar, payload, submetido_em: null, submetido_por: null }
+            : { lugar, payload, submetido_em: new Date().toISOString(), submetido_por: "demo" };
+          return { ...d, decisoes: { ...d.decisoes, [lugar]: proxima } };
+        });
+        return;
+      }
+      if (!dados.ronda_id || !dados.equipa_id) return;
       const payload = { ...(dados.decisoes[lugar]?.payload ?? {}), ...(rascunho[lugar] ?? {}) };
       await fnSubmeter({
         data: { ronda_id: dados.ronda_id, equipa_id: dados.equipa_id, lugar, payload, submeter: true },
@@ -449,16 +466,33 @@ export function JogoProvider({
       lugar: Lugar,
       opts: { tipo: string; nivel?: "L1" | "L2" | "L3"; custo?: number },
     ) => {
-      // Modo demo: gera resultado fictício local (só CHRO/dialogo tem UI activa por agora).
+      // Modo demo: gera resultado fictício local para todos os lugares.
       if (dados.modo !== "real") {
-        if (lugar === "CHRO" && opts.tipo === "dialogo") {
-          const rep = dados.colaboradores.find((c) => c.id === dados.chro_representante_id) ?? null;
-          const reg = novoDialogoRegistoDemo(rep, dados.colaboradores, dados.ronda_indice);
-          setDados((d) => ({
-            ...d,
-            pesquisas: { ...d.pesquisas, CHRO: [reg, ...(d.pesquisas.CHRO ?? [])] },
-          }));
-        }
+        setDados((d) => {
+          let reg;
+          if (opts.tipo === "dialogo") {
+            const rep = d.colaboradores.find((c) => c.id === d.chro_representante_id) ?? null;
+            reg = novoDialogoRegistoDemo(rep, d.colaboradores, d.ronda_indice);
+          } else {
+            let resultado: Record<string, unknown>;
+            if (opts.tipo === "estudo_economico") {
+              resultado = gerarResultadoEstudoEconomicoDemo(d.ronda_indice, opts.nivel);
+            } else if (opts.tipo === "pesquisa_mercado") {
+              resultado = gerarResultadoPesquisaMercadoDemo(d.ronda_indice, opts.nivel);
+            } else if (opts.tipo === "concorrencia") {
+              resultado = gerarResultadoConcorrenciaDemo(d.rivais, d.ronda_indice, opts.nivel);
+            } else if (opts.tipo === "analise_id") {
+              resultado = gerarResultadoAnaliseIdDemo(d.ronda_indice, opts.nivel);
+            } else {
+              resultado = { confianca: 0.85, nota: "Pesquisa registada." };
+            }
+            reg = novoPesquisaRegistoDemo({
+              lugar, tipo: opts.tipo, nivel: opts.nivel ?? null,
+              custo: opts.custo ?? 0, turno: d.ronda_indice, resultado,
+            });
+          }
+          return { ...d, pesquisas: { ...d.pesquisas, [lugar]: [reg, ...(d.pesquisas[lugar] ?? [])] } };
+        });
         return;
       }
       if (!dados.ronda_id || !dados.equipa_id) return;
@@ -600,14 +634,12 @@ export function JogoProvider({
 
   const pesquisaUsada = useCallback(
     (lugar: Lugar) => {
-      if (dados.modo !== "real" || !dados.ronda_id) return false;
       const list = dados.pesquisas[lugar] ?? [];
-      return list.some((p) => {
-        // Pesquisa da ronda atual não expõe ronda_id aqui, mas listamos apenas por criado_em > prazo…
-        // Alternativa: recontar via cliente. Para simplicidade, se há pelo menos uma acção nesta ronda
-        // não conseguimos distinguir sem ronda_id. Confiamos no gate do backend também.
-        return !!p; // conservador: se existe alguma na lista, o backend rejeita duplicados na ronda actual
-      }) && list.some((p) => new Date(p.criado_em).getTime() > 0);
+      if (dados.modo !== "real") {
+        return list.some((p) => p.ronda_indice === dados.ronda_indice);
+      }
+      if (!dados.ronda_id) return false;
+      return list.some((p) => p.ronda_id === dados.ronda_id);
     },
     [dados],
   );

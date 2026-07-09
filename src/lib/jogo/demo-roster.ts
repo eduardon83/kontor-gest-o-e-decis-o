@@ -199,10 +199,125 @@ export function novoDialogoRegistoDemo(
     tipo: "dialogo",
     nivel: null,
     custo: 0,
-    confianca: null,
+    confianca: 1,
     resultado: gerarResultadoDialogoDemo(rep, todos, turno),
     criado_em: new Date().toISOString(),
     ronda_indice: turno,
+    ronda_id: null,
     lugar: "CHRO",
+  };
+}
+
+/* ============================================================
+ * Geradores fictícios para outras pesquisas (demo).
+ * A forma casa com src/components/jogo/ResultadoPesquisa.tsx.
+ * ============================================================ */
+
+const CONF_POR_NIVEL: Record<string, number> = { L1: 0.75, L2: 0.85, L3: 0.95 };
+
+function confDe(nivel?: string | null): number {
+  return CONF_POR_NIVEL[String(nivel ?? "L2")] ?? 0.85;
+}
+
+/** Estudo económico (CFO) — próximos 4 turnos. */
+export function gerarResultadoEstudoEconomicoDemo(turno: number, nivel?: string | null) {
+  const r = mulberry32(seedFrom(`demo:econ:${turno}:${nivel ?? "L2"}`));
+  const janela = [];
+  let juro = 3 + rr(r, -0.3, 0.3);
+  let inflacao = 2.4 + rr(r, -0.4, 0.4);
+  let cresc = 1.6 + rr(r, -0.3, 0.4);
+  for (let i = 1; i <= 4; i++) {
+    juro = Math.max(0.5, juro + rr(r, -0.25, 0.25));
+    inflacao = Math.max(0, inflacao + rr(r, -0.2, 0.2));
+    cresc = cresc + rr(r, -0.2, 0.2);
+    janela.push({
+      turno: turno + i,
+      juro: Number(juro.toFixed(2)),
+      inflacao: Number(inflacao.toFixed(2)),
+      crescimento: Number(cresc.toFixed(2)),
+      confianca_mercado: Math.round(rr(r, 40, 80)),
+    });
+  }
+  return { confianca: confDe(nivel), janela };
+}
+
+/** Pesquisa de mercado (CMO) — sem números exatos de procura. */
+export function gerarResultadoPesquisaMercadoDemo(turno: number, nivel?: string | null) {
+  const r = mulberry32(seedFrom(`demo:mkt:${turno}:${nivel ?? "L2"}`));
+  const base = { cadeira: rr(r, 0.6, 1.2), mesa: rr(r, 0.5, 1.3), armario: rr(r, 0.4, 1.1) };
+  const emergs = [
+    { nome: "Linha Nórdica", produto: "cadeira", ganho: rr(r, 0.08, 0.18) },
+    { nome: "Contract HORECA", produto: "mesa", ganho: rr(r, 0.06, 0.14) },
+  ];
+  return {
+    confianca: confDe(nivel),
+    procura_relativa: {
+      cadeira: Number(base.cadeira.toFixed(2)),
+      mesa: Number(base.mesa.toFixed(2)),
+      armario: Number(base.armario.toFixed(2)),
+    },
+    emergentes_visiveis: r() < 0.6 ? [emergs[Math.floor(r() * emergs.length)]] : [],
+  };
+}
+
+/** Concorrência (CEO) — perfil aparente de rivais. */
+export function gerarResultadoConcorrenciaDemo(
+  rivais: { equipa_id: string; nome: string; valor: number }[],
+  turno: number,
+  nivel?: string | null,
+) {
+  const r = mulberry32(seedFrom(`demo:conc:${turno}:${nivel ?? "L2"}`));
+  const ritmos = ["cauteloso", "estável", "agressivo"];
+  return {
+    confianca: confDe(nivel),
+    rivais: rivais.map((v) => ({
+      nome: v.nome,
+      marca: Math.round(rr(r, 28, 62)),
+      ritmo: pick(r, ritmos),
+      precos: {
+        cadeira: Math.round(rr(r, 60, 90) / 2) * 2,
+        mesa: Math.round(rr(r, 140, 210) / 2) * 2,
+        armario: Math.round(rr(r, 260, 360) / 5) * 5,
+      },
+    })),
+  };
+}
+
+/** Análise I&D (COO). */
+export function gerarResultadoAnaliseIdDemo(turno: number, nivel?: string | null) {
+  const r = mulberry32(seedFrom(`demo:id:${turno}:${nivel ?? "L2"}`));
+  const bt = [
+    { nome: "Encaixe Modular", produto: "cadeira", ganho: rr(r, 0.08, 0.18) },
+    { nome: "Verniz Rápido", produto: "mesa", ganho: rr(r, 0.05, 0.12) },
+    { nome: "Ferragem Silenciosa", produto: "armario", ganho: rr(r, 0.06, 0.14) },
+  ];
+  return {
+    confianca: confDe(nivel),
+    progresso: Math.round(rr(r, 40, 180)),
+    distancia_breakthrough: Math.round(rr(r, 20, 120)),
+    breakthroughs_visiveis: r() < 0.7 ? [bt[Math.floor(r() * bt.length)]] : [],
+  };
+}
+
+/** Constrói um PesquisaRegisto local para qualquer tipo (demo). */
+export function novoPesquisaRegistoDemo(args: {
+  lugar: import("@/lib/jogo/tipos").Lugar;
+  tipo: string;
+  nivel?: string | null;
+  custo?: number | null;
+  turno: number;
+  resultado: Record<string, unknown>;
+}): PesquisaRegisto {
+  return {
+    id: `demo-${args.tipo}-${args.turno}-${Date.now()}`,
+    tipo: args.tipo,
+    nivel: args.nivel ?? null,
+    custo: args.custo ?? 0,
+    confianca: Number((args.resultado as any)?.confianca ?? null) || null,
+    resultado: args.resultado,
+    criado_em: new Date().toISOString(),
+    ronda_indice: args.turno,
+    ronda_id: null,
+    lugar: args.lugar,
   };
 }

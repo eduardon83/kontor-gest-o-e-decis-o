@@ -389,7 +389,10 @@ export function JogoProvider({
         ronda_prazo: ronda?.prazo_em ?? null,
         snapshotAtual,
         snapshots,
-        colaboradores: (cols ?? []) as Colaborador[],
+        colaboradores: ((cols ?? []) as any[]).map((c) => ({
+          ...c,
+          nome: (c.nome && String(c.nome).trim()) || nomePt(`col:${c.id}`, sexoDaVariante(c.avatar_variante)),
+        })) as Colaborador[],
         rivais,
         decisoes,
         pesquisas,

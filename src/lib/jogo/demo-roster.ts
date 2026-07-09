@@ -61,10 +61,13 @@ export function gerarRosterDemo(seedKey = "demo:marnera:1"): Colaborador[] {
       : 1.0;
     // Variação individual de mérito (±10%).
     const salario_mult = Number((salBase * rr(r, 0.95, 1.12)).toFixed(3));
+    const variante = (r() < 0.5 ? 1 : 2) as 1 | 2;
+    const id = `demo-col-${i.toString().padStart(2, "0")}`;
     out.push({
-      id: `demo-col-${i.toString().padStart(2, "0")}`,
+      id,
+      nome: nomePt(`${seedKey}:${id}`, sexoDaVariante(variante)),
       arquetipo: arq,
-      avatar_variante: (r() < 0.5 ? 1 : 2) as 1 | 2,
+      avatar_variante: variante,
       papel_org: papel,
       motivacao: Math.round(rr(r, 42, 88)),
       stress_individual: Math.round(rr(r, 18, 72)),

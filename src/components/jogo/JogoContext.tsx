@@ -41,6 +41,7 @@ export type SnapshotRegisto = {
 
 export type Colaborador = {
   id: string;
+  nome: string;
   arquetipo: string | null;
   avatar_variante: number;
   papel_org: string;
@@ -74,6 +75,7 @@ export type PesquisaRegisto = {
 
 export type Candidato = {
   id: string;
+  nome: string;
   arquetipo: string;
   avatar_variante: 1 | 2;
   atributos: Record<string, number>;

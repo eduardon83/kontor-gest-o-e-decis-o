@@ -107,10 +107,13 @@ export function gerarCandidatosDemo(seedKey = "demo:marnera:1:cands"): Candidato
     for (let k = 0; k < 2 && pool.length; k++) {
       pistas.push(pool.splice(ri(r, 0, pool.length - 1), 1)[0]);
     }
+    const variante = (r() < 0.5 ? 1 : 2) as 1 | 2;
+    const id = `demo-cand-${i}`;
     out.push({
-      id: `demo-cand-${i}`,
+      id,
+      nome: nomePt(`${seedKey}:${id}`, sexoDaVariante(variante)),
       arquetipo: arq,
-      avatar_variante: (r() < 0.5 ? 1 : 2) as 1 | 2,
+      avatar_variante: variante,
       atributos: {
         competencia: Math.round(rr(r, 35, 90)),
         ambicao: Math.round(rr(r, 25, 85)),

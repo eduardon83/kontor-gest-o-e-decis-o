@@ -424,7 +424,7 @@ export function JogoProvider({
 
   const podeEditar = useCallback(
     (lugar: Lugar) => {
-      if (dados.modo === "demo") return acesso.modo === "docente" || acesso.meuLugar === lugar;
+      if (dados.modo === "demo") return acesso.modo === "docente" || (acesso.modo === "jogador" && acesso.meuLugar === lugar);
       if (!dados.ronda_id) return false;
       if (!dados.meu_lugar_real) return false;
       return dados.meu_lugar_real === lugar && !submetidos[lugar];

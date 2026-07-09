@@ -15,6 +15,7 @@ import {
   gerarRosterDemo, gerarCandidatosDemo, escolherRepresentanteDemo, novoDialogoRegistoDemo,
 } from "@/lib/jogo/demo-roster";
 import { derivarContagens, MAQUINAS_INICIAIS } from "@/lib/jogo/contagens";
+import { nomePt, sexoDaVariante } from "@/lib/jogo/nomes-pt";
 
 /* ============ Tipos partilhados ============ */
 export type Snapshot = Record<string, unknown> & {

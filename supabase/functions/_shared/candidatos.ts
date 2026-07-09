@@ -3,9 +3,11 @@
 // para revalidar os ids que o cliente enviou nas contratações.
 import { stream, randRange, randInt, pick } from "./prng.ts";
 import { ARQUETIPOS, type Arquetipo } from "./constants.ts";
+import { nomePt, sexoDaVariante } from "./nomes-pt.ts";
 
 export type Candidato = {
   id: string; // determinístico: "cand:{seed}:{i}"
+  nome: string;
   arquetipo: Arquetipo;
   avatar_variante: 1 | 2;
   atributos: {
@@ -84,10 +86,13 @@ export function gerarPoolCandidatos(fonte: FonteCandidatos): Candidato[] {
       pistas.push(pool.splice(idx, 1)[0]);
     }
 
+    const variante = (r() < 0.5 ? 1 : 2) as 1 | 2;
+    const id = `cand:${fonte.competicaoSeed}:${fonte.rondaIndice}:${fonte.equipaId.slice(0, 8)}:${i}`;
     out.push({
-      id: `cand:${fonte.competicaoSeed}:${fonte.rondaIndice}:${fonte.equipaId.slice(0, 8)}:${i}`,
+      id,
+      nome: nomePt(`cand:${id}`, sexoDaVariante(variante)),
       arquetipo: arq,
-      avatar_variante: (r() < 0.5 ? 1 : 2) as 1 | 2,
+      avatar_variante: variante,
       atributos,
       salario_mensal_pedido,
       salario_mult: mult,

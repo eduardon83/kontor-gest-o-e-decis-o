@@ -51,6 +51,7 @@ function opcoesPara(papel_org: string): { tipo: TipoAcaoPessoa; label: string }[
 function descreveAcao(
   tipo: TipoAcaoPessoa,
   salarioAtualMensal: number,
+  nome: string,
 ): { titulo: string; efeito: string } {
   const salNovoSupervisor = BASE_SAL_MENSAL * 1.4;
   const salNovoChefe = BASE_SAL_MENSAL * 2.0;
@@ -59,22 +60,22 @@ function descreveAcao(
   switch (tipo) {
     case "promover_supervisor":
       return {
-        titulo: "Promover a supervisor",
+        titulo: `Promover ${nome} a supervisor`,
         efeito: `Salário mensal passa a ${fmtEur(salNovoSupervisor)} (×1,4). +5 moral.`,
       };
     case "promover_chefe_linha":
       return {
-        titulo: "Promover a chefe de linha",
+        titulo: `Promover ${nome} a chefe de linha`,
         efeito: `Salário mensal passa a ${fmtEur(salNovoChefe)} (×2,0). +5 moral.`,
       };
     case "promover_merito":
       return {
-        titulo: "Promoção de mérito",
+        titulo: `Promoção de mérito a ${nome}`,
         efeito: `Salário mensal passa a ${fmtEur(salNovoMerito)} (+12%). +5 moral.`,
       };
     case "despedir":
       return {
-        titulo: "Despedir",
+        titulo: `Despedir ${nome}`,
         efeito: `Indemnização de 2× salário mensal = ${fmtEur(indemn)} em caixa no fim do turno.`,
       };
   }
@@ -168,8 +169,10 @@ function LinhaColaborador({
       <AvatarColaborador arquetipo={arq} variante={variante} size={56} />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
-          <div className="font-serif text-sm">#{colaborador.id.slice(0, 4).toUpperCase()}</div>
-          <span className="mono text-[9px] uppercase tracking-widest text-gold">{arq}</span>
+          <div className="min-w-0 truncate font-serif text-sm">
+            {(colaborador.nome && String(colaborador.nome).trim()) || "Colaborador"}
+          </div>
+          <span className="mono shrink-0 text-[9px] uppercase tracking-widest text-gold">{arq}</span>
         </div>
         <div className="mono truncate text-[10px] uppercase tracking-widest text-muted-foreground">
           {PAPEL_ROTULO[colaborador.papel_org] ?? colaborador.papel_org} · {fmtEur(salarioAtualMensal)}/mês
@@ -214,17 +217,21 @@ function LinhaColaborador({
         </div>
       )}
 
-      {confirmar && (
-        <ModalConfirmar
-          titulo={descreveAcao(confirmar, salarioAtualMensal).titulo}
-          efeito={descreveAcao(confirmar, salarioAtualMensal).efeito}
-          onCancel={() => setConfirmar(null)}
-          onConfirm={() => {
-            onAplicar({ colaborador_id: colaborador.id, tipo: confirmar });
-            setConfirmar(null);
-          }}
-        />
-      )}
+      {confirmar && (() => {
+        const nome = (colaborador.nome && String(colaborador.nome).trim()) || "esta pessoa";
+        const d = descreveAcao(confirmar, salarioAtualMensal, nome);
+        return (
+          <ModalConfirmar
+            titulo={d.titulo}
+            efeito={d.efeito}
+            onCancel={() => setConfirmar(null)}
+            onConfirm={() => {
+              onAplicar({ colaborador_id: colaborador.id, tipo: confirmar });
+              setConfirmar(null);
+            }}
+          />
+        );
+      })()}
     </li>
   );
 }
@@ -282,9 +289,11 @@ function PoolCandidatos({
             const cand = candidatos.find((c) => c.id === ct.candidato_id);
             return (
               <li key={ct.candidato_id} className="flex items-center justify-between px-4 py-2 text-sm">
-                <div>
+                <div className="min-w-0">
                   <span className="font-serif">
-                    Contratação {cand ? `· ${cand.arquetipo}` : "· candidato antigo"}
+                    {cand
+                      ? `Contratar ${(cand.nome && cand.nome.trim()) || "candidato"} · ${cand.arquetipo}`
+                      : "Contratação · candidato antigo"}
                   </span>
                   <div className="mono text-[10px] uppercase tracking-widest text-muted-foreground">
                     {cand ? `${fmtEur(cand.salario_mensal_pedido)}/mês` : "não visível no pool actual"}
@@ -321,12 +330,15 @@ function PoolCandidatos({
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline justify-between gap-2">
-                        <span className="mono text-[10px] uppercase tracking-widest text-gold">
-                          {normalizaArq(c.arquetipo)}
+                        <span className="min-w-0 truncate font-serif text-sm">
+                          {(c.nome && c.nome.trim()) || "Candidato"}
                         </span>
-                        <span className="mono text-[10px] uppercase tracking-widest">
+                        <span className="mono shrink-0 text-[10px] uppercase tracking-widest">
                           {fmtEur(c.salario_mensal_pedido)}/mês
                         </span>
+                      </div>
+                      <div className="mono text-[10px] uppercase tracking-widest text-gold">
+                        {normalizaArq(c.arquetipo)}
                       </div>
                       <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
                         {c.pistas.map((p, i) => <li key={i}>· {p}</li>)}

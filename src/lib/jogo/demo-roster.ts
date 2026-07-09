@@ -2,6 +2,7 @@
 // Não escreve na base de dados: alimenta apenas o estado local do JogoContext.
 import type { Colaborador, Candidato, PesquisaRegisto } from "@/components/jogo/JogoContext";
 import type { Arquetipo } from "@/lib/jogo/tipos";
+import { nomePt, sexoDaVariante } from "@/lib/jogo/nomes-pt";
 
 // PRNG determinístico simples (mulberry32) para não depender do backend.
 function seedFrom(str: string): number {
@@ -60,10 +61,13 @@ export function gerarRosterDemo(seedKey = "demo:marnera:1"): Colaborador[] {
       : 1.0;
     // Variação individual de mérito (±10%).
     const salario_mult = Number((salBase * rr(r, 0.95, 1.12)).toFixed(3));
+    const variante = (r() < 0.5 ? 1 : 2) as 1 | 2;
+    const id = `demo-col-${i.toString().padStart(2, "0")}`;
     out.push({
-      id: `demo-col-${i.toString().padStart(2, "0")}`,
+      id,
+      nome: nomePt(`${seedKey}:${id}`, sexoDaVariante(variante)),
       arquetipo: arq,
-      avatar_variante: (r() < 0.5 ? 1 : 2) as 1 | 2,
+      avatar_variante: variante,
       papel_org: papel,
       motivacao: Math.round(rr(r, 42, 88)),
       stress_individual: Math.round(rr(r, 18, 72)),
@@ -103,10 +107,13 @@ export function gerarCandidatosDemo(seedKey = "demo:marnera:1:cands"): Candidato
     for (let k = 0; k < 2 && pool.length; k++) {
       pistas.push(pool.splice(ri(r, 0, pool.length - 1), 1)[0]);
     }
+    const variante = (r() < 0.5 ? 1 : 2) as 1 | 2;
+    const id = `demo-cand-${i}`;
     out.push({
-      id: `demo-cand-${i}`,
+      id,
+      nome: nomePt(`${seedKey}:${id}`, sexoDaVariante(variante)),
       arquetipo: arq,
-      avatar_variante: (r() < 0.5 ? 1 : 2) as 1 | 2,
+      avatar_variante: variante,
       atributos: {
         competencia: Math.round(rr(r, 35, 90)),
         ambicao: Math.round(rr(r, 25, 85)),
@@ -154,21 +161,28 @@ export function gerarResultadoDialogoDemo(
   if (rep.stress_individual > 60) queixas.push("Refere cansaço acumulado ao fim do dia.");
   if (rep.motivacao > 75) queixas.push("Está entusiasmado com o rumo da equipa.");
   return {
+    confianca: 1,
     representante: {
       id: rep.id,
+      nome: rep.nome,
       arquetipo: rep.arquetipo,
-      motivacao: rep.motivacao,
-      stress: rep.stress_individual,
+      papel_org: rep.papel_org,
+      avatar_variante: rep.avatar_variante,
       antiguidade: rep.antiguidade,
+      moral: rep.motivacao,
+      stress: rep.stress_individual,
+      necessidades: rep.necessidades,
+      salario_mult: rep.salario_mult,
     },
     humor,
-    queixas: queixas.length ? queixas : ["Sem queixas relevantes desta vez."],
-    clima_equipa: {
+    queixas: queixas.length ? queixas : [],
+    clima: {
       moral_media: climaMoral,
-      stress_media: climaStress,
+      stress_medio: climaStress,
+      n: todos.length,
       leitura: climaMoral > 65
-        ? "Equipa em bom clima geral."
-        : climaMoral < 45 ? "Clima frio — atenção às saídas." : "Clima estável, sem grande entusiasmo.",
+        ? "bom clima geral"
+        : climaMoral < 45 ? "clima frio — atenção às saídas" : "clima estável, sem grande entusiasmo",
     },
     turno,
   };

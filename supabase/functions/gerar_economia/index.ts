@@ -8,6 +8,7 @@ import {
   GUARDRAILS,
   PRODUTOS,
 } from "../_shared/constants.ts";
+import { nomePt, sexoDaVariante } from "../_shared/nomes-pt.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -137,14 +138,17 @@ Deno.serve(async (req) => {
         ...Array(nGestor).fill("gestor_linha"),
         ...Array(nInvest).fill("investigador"),
       ];
+      let idxPessoa = 0;
       for (const papel of perfilPapel) {
         const arq = pick(rPessoas, arquetipos);
         const spec = ARQUETIPOS[arq];
         const rng = (r: [number, number]) => Math.round(randRange(rPessoas, r[0], r[1]));
+        const variante = randInt(rPessoas, 1, 2);
         colaboradores.push({
           equipa_id: eq.id,
+          nome: nomePt(`col:${seedBase}:${eq.id}:${idxPessoa}`, sexoDaVariante(variante)),
           arquetipo: arq,
-          avatar_variante: randInt(rPessoas, 1, 2),
+          avatar_variante: variante,
           papel_org: papel,
           competencia: rng(spec.competencia),
           produtividade_base: rng(spec.produtividade),
@@ -156,6 +160,7 @@ Deno.serve(async (req) => {
           salario_mult: SALARIO_POR_PAPEL[papel] ?? 1.0,
           necessidades: { ambicao: rng(spec.ambicao) },
         });
+        idxPessoa++;
       }
     }
     if (colaboradores.length > 0) {

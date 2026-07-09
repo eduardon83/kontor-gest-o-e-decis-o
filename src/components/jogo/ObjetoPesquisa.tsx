@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Info, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { useJogo } from "./JogoContext";
+import { ResultadoPesquisa } from "./ResultadoPesquisa";
 import type { Lugar } from "@/lib/jogo/tipos";
 
 /* ============================================================
@@ -148,7 +149,7 @@ export function ObjetoPesquisa({ lugar }: { lugar: Lugar }) {
               <div>
                 Representante deste turno:{" "}
                 <strong className="font-serif text-foreground">
-                  #{rep.id.slice(0, 4).toUpperCase()}
+                  {(rep.nome && rep.nome.trim()) || "Colaborador"}
                 </strong>{" "}
                 <span className="mono text-[10px] uppercase tracking-widest text-gold">
                   {rep.arquetipo ?? "—"}
@@ -194,15 +195,9 @@ export function ObjetoPesquisa({ lugar }: { lugar: Lugar }) {
                     {p.ronda_indice != null && <span className="text-muted-foreground">T{p.ronda_indice}</span>}
                   </div>
                 </div>
-                {p.resultado ? (
-                  <pre className="mt-2 max-h-64 overflow-auto rounded-sm bg-muted/30 p-3 text-xs text-muted-foreground">
-                    {JSON.stringify(p.resultado, null, 2)}
-                  </pre>
-                ) : (
-                  <div className="mono mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">
-                    Resultado ainda em processamento…
-                  </div>
-                )}
+                <div className="mt-2">
+                  <ResultadoPesquisa tipo={p.tipo} resultado={p.resultado} />
+                </div>
                 <div className="mono mt-2 text-[10px] uppercase tracking-widest text-muted-foreground">
                   {new Date(p.criado_em).toLocaleString("pt-PT")}
                 </div>
@@ -347,15 +342,9 @@ export function ObjetoPesquisa({ lugar }: { lugar: Lugar }) {
                   )}
                 </div>
               </div>
-              {p.resultado ? (
-                <pre className="mt-2 max-h-64 overflow-auto rounded-sm bg-muted/30 p-3 text-xs text-muted-foreground">
-                  {JSON.stringify(p.resultado, null, 2)}
-                </pre>
-              ) : (
-                <div className="mono mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">
-                  Resultado ainda em processamento…
-                </div>
-              )}
+              <div className="mt-2">
+                <ResultadoPesquisa tipo={p.tipo} resultado={p.resultado} />
+              </div>
               <div className="mono mt-2 text-[10px] uppercase tracking-widest text-muted-foreground">
                 {new Date(p.criado_em).toLocaleString("pt-PT")}
               </div>

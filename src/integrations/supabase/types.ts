@@ -85,6 +85,7 @@ export type Database = {
           id: string
           motivacao: number
           necessidades: Json
+          nome: string
           papel_org: string
           produtividade_base: number
           resiliencia: number
@@ -104,6 +105,7 @@ export type Database = {
           id?: string
           motivacao?: number
           necessidades?: Json
+          nome?: string
           papel_org?: string
           produtividade_base?: number
           resiliencia?: number
@@ -123,6 +125,7 @@ export type Database = {
           id?: string
           motivacao?: number
           necessidades?: Json
+          nome?: string
           papel_org?: string
           produtividade_base?: number
           resiliencia?: number

@@ -15,6 +15,7 @@ import {
   gerarRosterDemo, gerarCandidatosDemo, escolherRepresentanteDemo, novoDialogoRegistoDemo,
 } from "@/lib/jogo/demo-roster";
 import { derivarContagens, MAQUINAS_INICIAIS } from "@/lib/jogo/contagens";
+import { nomePt, sexoDaVariante } from "@/lib/jogo/nomes-pt";
 
 /* ============ Tipos partilhados ============ */
 export type Snapshot = Record<string, unknown> & {
@@ -41,6 +42,7 @@ export type SnapshotRegisto = {
 
 export type Colaborador = {
   id: string;
+  nome: string;
   arquetipo: string | null;
   avatar_variante: number;
   papel_org: string;
@@ -74,6 +76,7 @@ export type PesquisaRegisto = {
 
 export type Candidato = {
   id: string;
+  nome: string;
   arquetipo: string;
   avatar_variante: 1 | 2;
   atributos: Record<string, number>;
@@ -293,7 +296,7 @@ export function JogoProvider({
       // Colaboradores
       const { data: cols } = await supabase
         .from("colaboradores")
-        .select("id, arquetipo, avatar_variante, papel_org, motivacao, stress_individual, antiguidade, necessidades, salario_mult")
+        .select("id, nome, arquetipo, avatar_variante, papel_org, motivacao, stress_individual, antiguidade, necessidades, salario_mult")
         .eq("equipa_id", equipaId)
         .eq("ativo", true);
 
@@ -368,7 +371,10 @@ export function JogoProvider({
         try {
           const r = await fnCarregarChro({ data: { equipa_id: equipaId, ronda_id: ronda.id } });
           chro_representante_id = r.representante_id;
-          chro_candidatos = r.candidatos as Candidato[];
+          chro_candidatos = (r.candidatos as any[]).map((c) => ({
+            ...c,
+            nome: (c.nome && String(c.nome).trim()) || nomePt(`cand:${c.id}`, sexoDaVariante(c.avatar_variante)),
+          })) as Candidato[];
         } catch (e) {
           console.warn("[JogoContext] carregarChro falhou", e);
         }
@@ -387,7 +393,10 @@ export function JogoProvider({
         ronda_prazo: ronda?.prazo_em ?? null,
         snapshotAtual,
         snapshots,
-        colaboradores: (cols ?? []) as Colaborador[],
+        colaboradores: ((cols ?? []) as any[]).map((c) => ({
+          ...c,
+          nome: (c.nome && String(c.nome).trim()) || nomePt(`col:${c.id}`, sexoDaVariante(c.avatar_variante)),
+        })) as Colaborador[],
         rivais,
         decisoes,
         pesquisas,
@@ -544,6 +553,7 @@ export function JogoProvider({
           if (d.colaboradores.some((k) => k.id === `demo-col-hire-${cand.id}`)) return d;
           const novo = {
             id: `demo-col-hire-${cand.id}`,
+            nome: cand.nome,
             arquetipo: cand.arquetipo,
             avatar_variante: cand.avatar_variante,
             papel_org: "trabalhador",

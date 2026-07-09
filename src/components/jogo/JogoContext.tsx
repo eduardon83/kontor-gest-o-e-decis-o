@@ -438,7 +438,20 @@ export function JogoProvider({
 
   const submeterLugar = useCallback(
     async (lugar: Lugar) => {
-      if (dados.modo !== "real" || !dados.ronda_id || !dados.equipa_id) return;
+      // Demo: alterna submissão localmente (permite reabrir para experimentar).
+      if (dados.modo !== "real") {
+        setDados((d) => {
+          const atual = d.decisoes[lugar];
+          const jaSubmetido = !!atual?.submetido_em;
+          const payload = { ...(atual?.payload ?? {}), ...(rascunho[lugar] ?? {}) };
+          const proxima: DecisaoRegisto = jaSubmetido
+            ? { lugar, payload, submetido_em: null, submetido_por: null }
+            : { lugar, payload, submetido_em: new Date().toISOString(), submetido_por: "demo" };
+          return { ...d, decisoes: { ...d.decisoes, [lugar]: proxima } };
+        });
+        return;
+      }
+      if (!dados.ronda_id || !dados.equipa_id) return;
       const payload = { ...(dados.decisoes[lugar]?.payload ?? {}), ...(rascunho[lugar] ?? {}) };
       await fnSubmeter({
         data: { ronda_id: dados.ronda_id, equipa_id: dados.equipa_id, lugar, payload, submeter: true },
@@ -453,16 +466,33 @@ export function JogoProvider({
       lugar: Lugar,
       opts: { tipo: string; nivel?: "L1" | "L2" | "L3"; custo?: number },
     ) => {
-      // Modo demo: gera resultado fictício local (só CHRO/dialogo tem UI activa por agora).
+      // Modo demo: gera resultado fictício local para todos os lugares.
       if (dados.modo !== "real") {
-        if (lugar === "CHRO" && opts.tipo === "dialogo") {
-          const rep = dados.colaboradores.find((c) => c.id === dados.chro_representante_id) ?? null;
-          const reg = novoDialogoRegistoDemo(rep, dados.colaboradores, dados.ronda_indice);
-          setDados((d) => ({
-            ...d,
-            pesquisas: { ...d.pesquisas, CHRO: [reg, ...(d.pesquisas.CHRO ?? [])] },
-          }));
-        }
+        setDados((d) => {
+          let reg;
+          if (opts.tipo === "dialogo") {
+            const rep = d.colaboradores.find((c) => c.id === d.chro_representante_id) ?? null;
+            reg = novoDialogoRegistoDemo(rep, d.colaboradores, d.ronda_indice);
+          } else {
+            let resultado: Record<string, unknown>;
+            if (opts.tipo === "estudo_economico") {
+              resultado = gerarResultadoEstudoEconomicoDemo(d.ronda_indice, opts.nivel);
+            } else if (opts.tipo === "pesquisa_mercado") {
+              resultado = gerarResultadoPesquisaMercadoDemo(d.ronda_indice, opts.nivel);
+            } else if (opts.tipo === "concorrencia") {
+              resultado = gerarResultadoConcorrenciaDemo(d.rivais, d.ronda_indice, opts.nivel);
+            } else if (opts.tipo === "analise_id") {
+              resultado = gerarResultadoAnaliseIdDemo(d.ronda_indice, opts.nivel);
+            } else {
+              resultado = { confianca: 0.85, nota: "Pesquisa registada." };
+            }
+            reg = novoPesquisaRegistoDemo({
+              lugar, tipo: opts.tipo, nivel: opts.nivel ?? null,
+              custo: opts.custo ?? 0, turno: d.ronda_indice, resultado,
+            });
+          }
+          return { ...d, pesquisas: { ...d.pesquisas, [lugar]: [reg, ...(d.pesquisas[lugar] ?? [])] } };
+        });
         return;
       }
       if (!dados.ronda_id || !dados.equipa_id) return;

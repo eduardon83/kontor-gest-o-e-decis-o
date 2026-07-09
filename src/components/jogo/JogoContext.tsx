@@ -443,10 +443,12 @@ export function JogoProvider({
     (lugar: Lugar) => {
       if (dados.modo === "demo") return acesso.modo === "docente" || (acesso.modo === "jogador" && acesso.meuLugar === lugar);
       if (!dados.ronda_id) return false;
+      // Modo condução (professor): edita qualquer lugar ainda não submetido; permite reabrir.
+      if (condutor) return !submetidos[lugar];
       if (!dados.meu_lugar_real) return false;
       return dados.meu_lugar_real === lugar && !submetidos[lugar];
     },
-    [dados.modo, dados.ronda_id, dados.meu_lugar_real, submetidos, acesso],
+    [dados.modo, dados.ronda_id, dados.meu_lugar_real, submetidos, acesso, condutor],
   );
 
   const atualizarRascunho = useCallback((lugar: Lugar, payload: Record<string, unknown>) => {
@@ -470,13 +472,52 @@ export function JogoProvider({
       }
       if (!dados.ronda_id || !dados.equipa_id) return;
       const payload = { ...(dados.decisoes[lugar]?.payload ?? {}), ...(rascunho[lugar] ?? {}) };
-      await fnSubmeter({
-        data: { ronda_id: dados.ronda_id, equipa_id: dados.equipa_id, lugar, payload, submeter: true },
-      });
+      if (condutor && condutorCompeticaoId) {
+        await fnSubmeterCondutor({
+          data: {
+            competicao_id: condutorCompeticaoId,
+            equipa_id: dados.equipa_id,
+            ronda_id: dados.ronda_id,
+            lugar,
+            payload,
+            submeter: true,
+          },
+        });
+      } else {
+        await fnSubmeter({
+          data: { ronda_id: dados.ronda_id, equipa_id: dados.equipa_id, lugar, payload, submeter: true },
+        });
+      }
       await carregar();
     },
-    [dados, rascunho, fnSubmeter, carregar],
+    [dados, rascunho, fnSubmeter, fnSubmeterCondutor, carregar, condutor, condutorCompeticaoId],
   );
+
+  const submeterTodos = useCallback(async () => {
+    if (!condutor || !condutorCompeticaoId || dados.modo !== "real" || !dados.ronda_id || !dados.equipa_id) return;
+    for (const l of LUGARES) {
+      if (submetidos[l]) continue;
+      const payload = { ...(dados.decisoes[l]?.payload ?? {}), ...(rascunho[l] ?? {}) };
+      await fnSubmeterCondutor({
+        data: {
+          competicao_id: condutorCompeticaoId,
+          equipa_id: dados.equipa_id,
+          ronda_id: dados.ronda_id,
+          lugar: l,
+          payload,
+          submeter: true,
+        },
+      });
+    }
+    await carregar();
+  }, [condutor, condutorCompeticaoId, dados, rascunho, submetidos, fnSubmeterCondutor, carregar]);
+
+  const resolverTurno = useCallback(async () => {
+    if (!condutor || !condutorCompeticaoId) return;
+    await fnResolverTurno({ data: { competicao_id: condutorCompeticaoId } });
+    await carregar();
+  }, [condutor, condutorCompeticaoId, fnResolverTurno, carregar]);
+
 
   const usarPesquisa = useCallback(
     async (

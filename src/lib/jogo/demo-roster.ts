@@ -161,21 +161,28 @@ export function gerarResultadoDialogoDemo(
   if (rep.stress_individual > 60) queixas.push("Refere cansaço acumulado ao fim do dia.");
   if (rep.motivacao > 75) queixas.push("Está entusiasmado com o rumo da equipa.");
   return {
+    confianca: 1,
     representante: {
       id: rep.id,
+      nome: rep.nome,
       arquetipo: rep.arquetipo,
-      motivacao: rep.motivacao,
-      stress: rep.stress_individual,
+      papel_org: rep.papel_org,
+      avatar_variante: rep.avatar_variante,
       antiguidade: rep.antiguidade,
+      moral: rep.motivacao,
+      stress: rep.stress_individual,
+      necessidades: rep.necessidades,
+      salario_mult: rep.salario_mult,
     },
     humor,
-    queixas: queixas.length ? queixas : ["Sem queixas relevantes desta vez."],
-    clima_equipa: {
+    queixas: queixas.length ? queixas : [],
+    clima: {
       moral_media: climaMoral,
-      stress_media: climaStress,
+      stress_medio: climaStress,
+      n: todos.length,
       leitura: climaMoral > 65
-        ? "Equipa em bom clima geral."
-        : climaMoral < 45 ? "Clima frio — atenção às saídas." : "Clima estável, sem grande entusiasmo.",
+        ? "bom clima geral"
+        : climaMoral < 45 ? "clima frio — atenção às saídas" : "clima estável, sem grande entusiasmo",
     },
     turno,
   };

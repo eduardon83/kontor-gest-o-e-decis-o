@@ -634,14 +634,12 @@ export function JogoProvider({
 
   const pesquisaUsada = useCallback(
     (lugar: Lugar) => {
-      if (dados.modo !== "real" || !dados.ronda_id) return false;
       const list = dados.pesquisas[lugar] ?? [];
-      return list.some((p) => {
-        // Pesquisa da ronda atual não expõe ronda_id aqui, mas listamos apenas por criado_em > prazo…
-        // Alternativa: recontar via cliente. Para simplicidade, se há pelo menos uma acção nesta ronda
-        // não conseguimos distinguir sem ronda_id. Confiamos no gate do backend também.
-        return !!p; // conservador: se existe alguma na lista, o backend rejeita duplicados na ronda actual
-      }) && list.some((p) => new Date(p.criado_em).getTime() > 0);
+      if (dados.modo !== "real") {
+        return list.some((p) => p.ronda_indice === dados.ronda_indice);
+      }
+      if (!dados.ronda_id) return false;
+      return list.some((p) => p.ronda_id === dados.ronda_id);
     },
     [dados],
   );

@@ -317,6 +317,7 @@ export function novoPesquisaRegistoDemo(args: {
     resultado: args.resultado,
     criado_em: new Date().toISOString(),
     ronda_indice: args.turno,
+    ronda_id: null,
     lugar: args.lugar,
   };
 }

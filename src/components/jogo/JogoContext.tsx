@@ -371,7 +371,10 @@ export function JogoProvider({
         try {
           const r = await fnCarregarChro({ data: { equipa_id: equipaId, ronda_id: ronda.id } });
           chro_representante_id = r.representante_id;
-          chro_candidatos = r.candidatos as Candidato[];
+          chro_candidatos = (r.candidatos as any[]).map((c) => ({
+            ...c,
+            nome: (c.nome && String(c.nome).trim()) || nomePt(`cand:${c.id}`, sexoDaVariante(c.avatar_variante)),
+          })) as Candidato[];
         } catch (e) {
           console.warn("[JogoContext] carregarChro falhou", e);
         }

@@ -82,7 +82,7 @@ function fmtEur(v: number | null | undefined): string {
  * Componente principal
  * ============================================================ */
 export function ObjetoPesquisa({ lugar }: { lugar: Lugar }) {
-  const { pesquisas, usarPesquisa, podeEditar, ronda_indice, chro_representante_id, colaboradores } = useJogo();
+  const { pesquisas, usarPesquisa, pesquisaUsada, podeEditar, chro_representante_id, colaboradores } = useJogo();
   const meta = META[lugar];
   const lista = pesquisas[lugar] ?? [];
   const editavel = podeEditar(lugar);
@@ -91,7 +91,7 @@ export function ObjetoPesquisa({ lugar }: { lugar: Lugar }) {
   const [erro, setErro] = useState<string | null>(null);
 
   // "1 pesquisa por lugar por turno" — bate com a regra do backend.
-  const jaUsouNesteTurno = lista.some((p) => p.ronda_indice === ronda_indice);
+  const jaUsouNesteTurno = pesquisaUsada(lugar);
   const bloqueado = !editavel || jaUsouNesteTurno;
   const escolhido = NIVEIS.find((n) => n.id === nivelEscolhido)!;
 

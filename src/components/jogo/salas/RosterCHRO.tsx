@@ -330,12 +330,15 @@ function PoolCandidatos({
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline justify-between gap-2">
-                        <span className="mono text-[10px] uppercase tracking-widest text-gold">
-                          {normalizaArq(c.arquetipo)}
+                        <span className="min-w-0 truncate font-serif text-sm">
+                          {(c.nome && c.nome.trim()) || "Candidato"}
                         </span>
-                        <span className="mono text-[10px] uppercase tracking-widest">
+                        <span className="mono shrink-0 text-[10px] uppercase tracking-widest">
                           {fmtEur(c.salario_mensal_pedido)}/mês
                         </span>
+                      </div>
+                      <div className="mono text-[10px] uppercase tracking-widest text-gold">
+                        {normalizaArq(c.arquetipo)}
                       </div>
                       <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
                         {c.pistas.map((p, i) => <li key={i}>· {p}</li>)}

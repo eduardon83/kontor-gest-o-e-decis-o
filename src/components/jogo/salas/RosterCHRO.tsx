@@ -168,8 +168,10 @@ function LinhaColaborador({
       <AvatarColaborador arquetipo={arq} variante={variante} size={56} />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
-          <div className="font-serif text-sm">#{colaborador.id.slice(0, 4).toUpperCase()}</div>
-          <span className="mono text-[9px] uppercase tracking-widest text-gold">{arq}</span>
+          <div className="min-w-0 truncate font-serif text-sm">
+            {(colaborador.nome && String(colaborador.nome).trim()) || "Colaborador"}
+          </div>
+          <span className="mono shrink-0 text-[9px] uppercase tracking-widest text-gold">{arq}</span>
         </div>
         <div className="mono truncate text-[10px] uppercase tracking-widest text-muted-foreground">
           {PAPEL_ROTULO[colaborador.papel_org] ?? colaborador.papel_org} · {fmtEur(salarioAtualMensal)}/mês

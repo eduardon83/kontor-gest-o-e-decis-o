@@ -203,6 +203,7 @@ export function novoDialogoRegistoDemo(
     resultado: gerarResultadoDialogoDemo(rep, todos, turno),
     criado_em: new Date().toISOString(),
     ronda_indice: turno,
+    ronda_id: null,
     lugar: "CHRO",
   };
 }

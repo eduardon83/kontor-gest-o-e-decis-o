@@ -217,17 +217,21 @@ function LinhaColaborador({
         </div>
       )}
 
-      {confirmar && (
-        <ModalConfirmar
-          titulo={descreveAcao(confirmar, salarioAtualMensal).titulo}
-          efeito={descreveAcao(confirmar, salarioAtualMensal).efeito}
-          onCancel={() => setConfirmar(null)}
-          onConfirm={() => {
-            onAplicar({ colaborador_id: colaborador.id, tipo: confirmar });
-            setConfirmar(null);
-          }}
-        />
-      )}
+      {confirmar && (() => {
+        const nome = (colaborador.nome && String(colaborador.nome).trim()) || "esta pessoa";
+        const d = descreveAcao(confirmar, salarioAtualMensal, nome);
+        return (
+          <ModalConfirmar
+            titulo={d.titulo}
+            efeito={d.efeito}
+            onCancel={() => setConfirmar(null)}
+            onConfirm={() => {
+              onAplicar({ colaborador_id: colaborador.id, tipo: confirmar });
+              setConfirmar(null);
+            }}
+          />
+        );
+      })()}
     </li>
   );
 }

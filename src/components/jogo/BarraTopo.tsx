@@ -127,6 +127,51 @@ export function BarraTopo() {
         </div>
       </div>
 
+      {condutor && (
+        <div
+          className="border-t px-6 py-2"
+          style={{
+            background: "color-mix(in oklab, var(--gold) 14%, transparent)",
+            borderColor: "color-mix(in oklab, var(--gold) 35%, transparent)",
+          }}
+        >
+          <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-3">
+            <span className="mono text-[10px] uppercase tracking-[0.24em] text-gold">
+              Modo condução
+            </span>
+            <span className="font-serif text-sm text-paper">{nomeEmpresa}</span>
+            <span className="mono text-[10px] uppercase tracking-widest text-paper/70">
+              professor a conduzir todos os lugares
+            </span>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                disabled={todosSubmetidos || ocupadoCond !== ""}
+                onClick={async () => {
+                  setOcupadoCond("submeter");
+                  try { await submeterTodos(); } finally { setOcupadoCond(""); }
+                }}
+                className="mono rounded-sm border px-3 py-1 text-[10px] uppercase tracking-widest text-paper hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-40"
+                style={{ borderColor: "var(--gold)" }}
+              >
+                {ocupadoCond === "submeter" ? "A submeter…" : todosSubmetidos ? "Todos submetidos" : "Submeter todos os lugares"}
+              </button>
+              <button
+                type="button"
+                disabled={ocupadoCond !== ""}
+                onClick={async () => {
+                  if (!confirm("Resolver o turno agora? Vai avançar para a próxima ronda.")) return;
+                  setOcupadoCond("resolver");
+                  try { await resolverTurno(); } finally { setOcupadoCond(""); }
+                }}
+                className="mono rounded-sm bg-gold px-3 py-1 text-[10px] uppercase tracking-widest text-navy hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {ocupadoCond === "resolver" ? "A resolver…" : "Resolver turno agora"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {defAberto && (
         <div className="border-t bg-card px-6 py-3 text-foreground" style={{ borderColor: "color-mix(in oklab, var(--gold) 25%, transparent)" }}>

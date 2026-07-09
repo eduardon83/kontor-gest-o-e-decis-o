@@ -2,6 +2,7 @@
 // Não escreve na base de dados: alimenta apenas o estado local do JogoContext.
 import type { Colaborador, Candidato, PesquisaRegisto } from "@/components/jogo/JogoContext";
 import type { Arquetipo } from "@/lib/jogo/tipos";
+import { nomePt, sexoDaVariante } from "@/lib/jogo/nomes-pt";
 
 // PRNG determinístico simples (mulberry32) para não depender do backend.
 function seedFrom(str: string): number {

@@ -148,6 +148,11 @@ type Estado = DadosJogo & {
   guardarNomeEmpresa: (n: string) => Promise<void>;
   guardarNomePerfil: (n: string) => Promise<void>;
 
+  // Condução (professor)
+  condutor: boolean;
+  resolverTurno: () => Promise<void>;
+  submeterTodos: () => Promise<void>;
+
   recarregar: () => Promise<void>;
   aCarregar: boolean;
 };

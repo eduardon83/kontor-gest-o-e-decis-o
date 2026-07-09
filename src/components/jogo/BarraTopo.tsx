@@ -21,11 +21,13 @@ export function BarraTopo() {
     nomeEmpresa, acesso, setAcesso, modo, meu_lugar_real,
     ronda_indice, ronda_total, ronda_prazo, snapshotAtual, guardarNomePerfil,
     competicao_id, equipa_id,
+    condutor, submeterTodos, resolverTurno, submetidos,
   } = useJogo() as any;
 
   const navigate = useNavigate();
   const [defAberto, setDefAberto] = useState(false);
   const [nomePerfil, setNomePerfil] = useState("");
+  const [ocupadoCond, setOcupadoCond] = useState<"" | "submeter" | "resolver">("");
 
   useEffect(() => {
     if (defAberto) {
@@ -46,12 +48,16 @@ export function BarraTopo() {
 
   function mudarAcesso(v: string) {
     if (v === "docente") setAcesso({ modo: "docente" });
+    else if (v === "condutor") setAcesso({ modo: "condutor" });
     else setAcesso({ modo: "jogador", meuLugar: v as Acesso extends { modo: "jogador"; meuLugar: infer L } ? L : never });
   }
 
   // Em modo real só permite alternar para o próprio lugar; docente demo continua a funcionar em modo demo.
+  // Em modo condução (professor), mantém o próprio modo — não faz sentido alternar.
   const seletorOpcoes: { valor: string; rotulo: string; disabled?: boolean }[] =
-    modo === "real"
+    condutor
+      ? [{ valor: "condutor", rotulo: "Condução — todos os lugares" }]
+      : modo === "real"
       ? [
           { valor: "docente", rotulo: "Docente — pré-visualização" },
           ...LUGARES.map((l) => ({ valor: l, rotulo: `Jogador · ${l}`, disabled: meu_lugar_real !== l })),
@@ -60,6 +66,13 @@ export function BarraTopo() {
           { valor: "docente", rotulo: "Docente — demo" },
           ...LUGARES.map((l) => ({ valor: l, rotulo: `Jogador · ${l}` })),
         ];
+
+  const acessoValor = acesso.modo === "docente"
+    ? "docente"
+    : acesso.modo === "condutor"
+    ? "condutor"
+    : acesso.meuLugar;
+  const todosSubmetidos = LUGARES.every((l) => submetidos?.[l]);
 
   return (
     <header className="surface-navy border-b" style={{ borderColor: "color-mix(in oklab, var(--gold) 30%, transparent)" }}>
@@ -83,7 +96,8 @@ export function BarraTopo() {
           <Bloco rotulo="Valor" valor={`${(valor / 1000).toFixed(0)}k €`} mono />
 
           <select
-            value={acesso.modo === "docente" ? "docente" : acesso.meuLugar}
+            value={acessoValor}
+            disabled={condutor}
             onChange={(e) => mudarAcesso(e.target.value)}
             className="mono cursor-pointer rounded-sm border bg-transparent px-2 py-1 text-[11px] uppercase tracking-widest text-paper focus:outline-none"
             style={{ borderColor: "var(--gold)" }}
@@ -113,6 +127,51 @@ export function BarraTopo() {
         </div>
       </div>
 
+      {condutor && (
+        <div
+          className="border-t px-6 py-2"
+          style={{
+            background: "color-mix(in oklab, var(--gold) 14%, transparent)",
+            borderColor: "color-mix(in oklab, var(--gold) 35%, transparent)",
+          }}
+        >
+          <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-3">
+            <span className="mono text-[10px] uppercase tracking-[0.24em] text-gold">
+              Modo condução
+            </span>
+            <span className="font-serif text-sm text-paper">{nomeEmpresa}</span>
+            <span className="mono text-[10px] uppercase tracking-widest text-paper/70">
+              professor a conduzir todos os lugares
+            </span>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                disabled={todosSubmetidos || ocupadoCond !== ""}
+                onClick={async () => {
+                  setOcupadoCond("submeter");
+                  try { await submeterTodos(); } finally { setOcupadoCond(""); }
+                }}
+                className="mono rounded-sm border px-3 py-1 text-[10px] uppercase tracking-widest text-paper hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-40"
+                style={{ borderColor: "var(--gold)" }}
+              >
+                {ocupadoCond === "submeter" ? "A submeter…" : todosSubmetidos ? "Todos submetidos" : "Submeter todos os lugares"}
+              </button>
+              <button
+                type="button"
+                disabled={ocupadoCond !== ""}
+                onClick={async () => {
+                  if (!confirm("Resolver o turno agora? Vai avançar para a próxima ronda.")) return;
+                  setOcupadoCond("resolver");
+                  try { await resolverTurno(); } finally { setOcupadoCond(""); }
+                }}
+                className="mono rounded-sm bg-gold px-3 py-1 text-[10px] uppercase tracking-widest text-navy hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {ocupadoCond === "resolver" ? "A resolver…" : "Resolver turno agora"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {defAberto && (
         <div className="border-t bg-card px-6 py-3 text-foreground" style={{ borderColor: "color-mix(in oklab, var(--gold) 25%, transparent)" }}>

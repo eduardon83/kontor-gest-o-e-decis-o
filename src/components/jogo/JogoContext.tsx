@@ -8,6 +8,10 @@ import {
   atualizarNomePerfil as atualizarNomePerfilFn,
 } from "@/lib/jogo.functions";
 import { carregarChro as carregarChroFn } from "@/lib/chro.functions";
+import {
+  submeterDecisaoComoCondutor as submeterCondutorFn,
+  resolverTurnoComoProfessor as resolverTurnoFn,
+} from "@/lib/professor-conducao.functions";
 import type { Lugar, Acesso, SalaId } from "@/lib/jogo/tipos";
 import { LUGARES } from "@/lib/jogo/tipos";
 import type { AcaoPessoa, Contratacao } from "@/lib/jogo/schema-decisoes";
@@ -144,6 +148,11 @@ type Estado = DadosJogo & {
   guardarNomeEmpresa: (n: string) => Promise<void>;
   guardarNomePerfil: (n: string) => Promise<void>;
 
+  // Condução (professor)
+  condutor: boolean;
+  resolverTurno: () => Promise<void>;
+  submeterTodos: () => Promise<void>;
+
   recarregar: () => Promise<void>;
   aCarregar: boolean;
 };
@@ -218,15 +227,21 @@ function estadoVazio(): DadosJogo {
 export function JogoProvider({
   equipaId,
   lugarInicial,
+  condutorCompeticaoId,
   children,
 }: {
   equipaId?: string | null;
   lugarInicial?: Lugar | null;
+  /** Se preenchido, entra em MODO CONDUÇÃO (professor a conduzir uma equipa real). */
+  condutorCompeticaoId?: string | null;
   children: ReactNode;
 }) {
+  const condutor = !!condutorCompeticaoId;
   const [dados, setDados] = useState<DadosJogo>(estadoVazio());
   const [acesso, setAcesso] = useState<Acesso>(
-    equipaId && lugarInicial
+    condutor
+      ? { modo: "condutor" }
+      : equipaId && lugarInicial
       ? { modo: "jogador", meuLugar: lugarInicial }
       : { modo: "docente" },
   );
@@ -236,6 +251,8 @@ export function JogoProvider({
   const [aCarregar, setACarregar] = useState<boolean>(!!equipaId);
 
   const fnSubmeter = useServerFn(submeterDecisaoFn);
+  const fnSubmeterCondutor = useServerFn(submeterCondutorFn);
+  const fnResolverTurno = useServerFn(resolverTurnoFn);
   const fnPesquisa = useServerFn(executarAcaoInfo);
   const fnNomeEmpresa = useServerFn(atualizarNomeEmpresaFn);
   const fnNomePerfil = useServerFn(atualizarNomePerfilFn);
@@ -424,12 +441,14 @@ export function JogoProvider({
 
   const podeEditar = useCallback(
     (lugar: Lugar) => {
-      if (dados.modo === "demo") return acesso.modo === "docente" || acesso.meuLugar === lugar;
+      if (dados.modo === "demo") return acesso.modo === "docente" || (acesso.modo === "jogador" && acesso.meuLugar === lugar);
       if (!dados.ronda_id) return false;
+      // Modo condução (professor): edita qualquer lugar ainda não submetido; permite reabrir.
+      if (condutor) return !submetidos[lugar];
       if (!dados.meu_lugar_real) return false;
       return dados.meu_lugar_real === lugar && !submetidos[lugar];
     },
-    [dados.modo, dados.ronda_id, dados.meu_lugar_real, submetidos, acesso],
+    [dados.modo, dados.ronda_id, dados.meu_lugar_real, submetidos, acesso, condutor],
   );
 
   const atualizarRascunho = useCallback((lugar: Lugar, payload: Record<string, unknown>) => {
@@ -453,13 +472,52 @@ export function JogoProvider({
       }
       if (!dados.ronda_id || !dados.equipa_id) return;
       const payload = { ...(dados.decisoes[lugar]?.payload ?? {}), ...(rascunho[lugar] ?? {}) };
-      await fnSubmeter({
-        data: { ronda_id: dados.ronda_id, equipa_id: dados.equipa_id, lugar, payload, submeter: true },
-      });
+      if (condutor && condutorCompeticaoId) {
+        await fnSubmeterCondutor({
+          data: {
+            competicao_id: condutorCompeticaoId,
+            equipa_id: dados.equipa_id,
+            ronda_id: dados.ronda_id,
+            lugar,
+            payload,
+            submeter: true,
+          },
+        });
+      } else {
+        await fnSubmeter({
+          data: { ronda_id: dados.ronda_id, equipa_id: dados.equipa_id, lugar, payload, submeter: true },
+        });
+      }
       await carregar();
     },
-    [dados, rascunho, fnSubmeter, carregar],
+    [dados, rascunho, fnSubmeter, fnSubmeterCondutor, carregar, condutor, condutorCompeticaoId],
   );
+
+  const submeterTodos = useCallback(async () => {
+    if (!condutor || !condutorCompeticaoId || dados.modo !== "real" || !dados.ronda_id || !dados.equipa_id) return;
+    for (const l of LUGARES) {
+      if (submetidos[l]) continue;
+      const payload = { ...(dados.decisoes[l]?.payload ?? {}), ...(rascunho[l] ?? {}) };
+      await fnSubmeterCondutor({
+        data: {
+          competicao_id: condutorCompeticaoId,
+          equipa_id: dados.equipa_id,
+          ronda_id: dados.ronda_id,
+          lugar: l,
+          payload,
+          submeter: true,
+        },
+      });
+    }
+    await carregar();
+  }, [condutor, condutorCompeticaoId, dados, rascunho, submetidos, fnSubmeterCondutor, carregar]);
+
+  const resolverTurno = useCallback(async () => {
+    if (!condutor || !condutorCompeticaoId) return;
+    await fnResolverTurno({ data: { competicao_id: condutorCompeticaoId } });
+    await carregar();
+  }, [condutor, condutorCompeticaoId, fnResolverTurno, carregar]);
+
 
   const usarPesquisa = useCallback(
     async (
@@ -706,10 +764,13 @@ export function JogoProvider({
       nomeEmpresa: dados.equipa_nome,
       guardarNomeEmpresa,
       guardarNomePerfil,
+      condutor,
+      resolverTurno,
+      submeterTodos,
       recarregar: carregar,
       aCarregar,
     }),
-    [dados, snapshotEnriquecido, acesso, lugarVisto, sala, podeEditar, submetidos, rascunho, atualizarRascunho, submeterLugar, usarPesquisa, pesquisaUsada, chroAcoesPendentes, adicionarAcaoPessoa, removerAcaoPessoa, adicionarContratacao, removerContratacao, guardarNomeEmpresa, guardarNomePerfil, carregar, aCarregar],
+    [dados, snapshotEnriquecido, acesso, lugarVisto, sala, podeEditar, submetidos, rascunho, atualizarRascunho, submeterLugar, usarPesquisa, pesquisaUsada, chroAcoesPendentes, adicionarAcaoPessoa, removerAcaoPessoa, adicionarContratacao, removerContratacao, guardarNomeEmpresa, guardarNomePerfil, condutor, resolverTurno, submeterTodos, carregar, aCarregar],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -553,6 +553,7 @@ export function JogoProvider({
           if (d.colaboradores.some((k) => k.id === `demo-col-hire-${cand.id}`)) return d;
           const novo = {
             id: `demo-col-hire-${cand.id}`,
+            nome: cand.nome,
             arquetipo: cand.arquetipo,
             avatar_variante: cand.avatar_variante,
             papel_org: "trabalhador",

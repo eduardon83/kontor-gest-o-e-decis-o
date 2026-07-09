@@ -8,6 +8,10 @@ import {
   atualizarNomePerfil as atualizarNomePerfilFn,
 } from "@/lib/jogo.functions";
 import { carregarChro as carregarChroFn } from "@/lib/chro.functions";
+import {
+  submeterDecisaoComoCondutor as submeterCondutorFn,
+  resolverTurnoComoProfessor as resolverTurnoFn,
+} from "@/lib/professor-conducao.functions";
 import type { Lugar, Acesso, SalaId } from "@/lib/jogo/tipos";
 import { LUGARES } from "@/lib/jogo/tipos";
 import type { AcaoPessoa, Contratacao } from "@/lib/jogo/schema-decisoes";

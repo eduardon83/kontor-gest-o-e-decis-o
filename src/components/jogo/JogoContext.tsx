@@ -13,6 +13,8 @@ import { LUGARES } from "@/lib/jogo/tipos";
 import type { AcaoPessoa, Contratacao } from "@/lib/jogo/schema-decisoes";
 import {
   gerarRosterDemo, gerarCandidatosDemo, escolherRepresentanteDemo, novoDialogoRegistoDemo,
+  gerarResultadoEstudoEconomicoDemo, gerarResultadoPesquisaMercadoDemo,
+  gerarResultadoConcorrenciaDemo, gerarResultadoAnaliseIdDemo, novoPesquisaRegistoDemo,
 } from "@/lib/jogo/demo-roster";
 import { derivarContagens, MAQUINAS_INICIAIS } from "@/lib/jogo/contagens";
 import { nomePt, sexoDaVariante } from "@/lib/jogo/nomes-pt";

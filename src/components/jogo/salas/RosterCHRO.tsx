@@ -51,6 +51,7 @@ function opcoesPara(papel_org: string): { tipo: TipoAcaoPessoa; label: string }[
 function descreveAcao(
   tipo: TipoAcaoPessoa,
   salarioAtualMensal: number,
+  nome: string,
 ): { titulo: string; efeito: string } {
   const salNovoSupervisor = BASE_SAL_MENSAL * 1.4;
   const salNovoChefe = BASE_SAL_MENSAL * 2.0;
@@ -59,22 +60,22 @@ function descreveAcao(
   switch (tipo) {
     case "promover_supervisor":
       return {
-        titulo: "Promover a supervisor",
+        titulo: `Promover ${nome} a supervisor`,
         efeito: `Salário mensal passa a ${fmtEur(salNovoSupervisor)} (×1,4). +5 moral.`,
       };
     case "promover_chefe_linha":
       return {
-        titulo: "Promover a chefe de linha",
+        titulo: `Promover ${nome} a chefe de linha`,
         efeito: `Salário mensal passa a ${fmtEur(salNovoChefe)} (×2,0). +5 moral.`,
       };
     case "promover_merito":
       return {
-        titulo: "Promoção de mérito",
+        titulo: `Promoção de mérito a ${nome}`,
         efeito: `Salário mensal passa a ${fmtEur(salNovoMerito)} (+12%). +5 moral.`,
       };
     case "despedir":
       return {
-        titulo: "Despedir",
+        titulo: `Despedir ${nome}`,
         efeito: `Indemnização de 2× salário mensal = ${fmtEur(indemn)} em caixa no fim do turno.`,
       };
   }

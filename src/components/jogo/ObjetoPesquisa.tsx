@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Info, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { useJogo } from "./JogoContext";
+import { ResultadoPesquisa } from "./ResultadoPesquisa";
 import type { Lugar } from "@/lib/jogo/tipos";
 
 /* ============================================================

@@ -21,11 +21,13 @@ export function BarraTopo() {
     nomeEmpresa, acesso, setAcesso, modo, meu_lugar_real,
     ronda_indice, ronda_total, ronda_prazo, snapshotAtual, guardarNomePerfil,
     competicao_id, equipa_id,
+    condutor, submeterTodos, resolverTurno, submetidos,
   } = useJogo() as any;
 
   const navigate = useNavigate();
   const [defAberto, setDefAberto] = useState(false);
   const [nomePerfil, setNomePerfil] = useState("");
+  const [ocupadoCond, setOcupadoCond] = useState<"" | "submeter" | "resolver">("");
 
   useEffect(() => {
     if (defAberto) {
@@ -46,12 +48,16 @@ export function BarraTopo() {
 
   function mudarAcesso(v: string) {
     if (v === "docente") setAcesso({ modo: "docente" });
+    else if (v === "condutor") setAcesso({ modo: "condutor" });
     else setAcesso({ modo: "jogador", meuLugar: v as Acesso extends { modo: "jogador"; meuLugar: infer L } ? L : never });
   }
 
   // Em modo real só permite alternar para o próprio lugar; docente demo continua a funcionar em modo demo.
+  // Em modo condução (professor), mantém o próprio modo — não faz sentido alternar.
   const seletorOpcoes: { valor: string; rotulo: string; disabled?: boolean }[] =
-    modo === "real"
+    condutor
+      ? [{ valor: "condutor", rotulo: "Condução — todos os lugares" }]
+      : modo === "real"
       ? [
           { valor: "docente", rotulo: "Docente — pré-visualização" },
           ...LUGARES.map((l) => ({ valor: l, rotulo: `Jogador · ${l}`, disabled: meu_lugar_real !== l })),
@@ -60,6 +66,13 @@ export function BarraTopo() {
           { valor: "docente", rotulo: "Docente — demo" },
           ...LUGARES.map((l) => ({ valor: l, rotulo: `Jogador · ${l}` })),
         ];
+
+  const acessoValor = acesso.modo === "docente"
+    ? "docente"
+    : acesso.modo === "condutor"
+    ? "condutor"
+    : acesso.meuLugar;
+  const todosSubmetidos = LUGARES.every((l) => submetidos?.[l]);
 
   return (
     <header className="surface-navy border-b" style={{ borderColor: "color-mix(in oklab, var(--gold) 30%, transparent)" }}>

@@ -77,13 +77,14 @@ export function BarraTopo() {
   return (
     <header className="surface-navy border-b" style={{ borderColor: "color-mix(in oklab, var(--gold) 30%, transparent)" }}>
       <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-4 px-6 py-3">
-        <div className="flex items-center gap-3">
+        <Link to="/painel" className="flex items-center gap-3" title="Voltar ao painel">
           <Livre inicial={inicial} size={40} />
           <div className="leading-tight">
             <div className="font-serif text-lg text-paper">{nomeEmpresa}</div>
-            <div className="mono text-[10px] uppercase tracking-[0.24em] text-gold">Kontor</div>
+            <div className="mono text-[10px] uppercase tracking-[0.24em] text-gold">Kontor · painel</div>
           </div>
-        </div>
+        </Link>
+
 
         <div className="hidden items-center gap-6 border-l pl-6 md:flex" style={{ borderColor: "color-mix(in oklab, var(--gold) 25%, transparent)" }}>
           <Bloco rotulo="Turno" valor={`${ronda_indice} / ${ronda_total}`} />

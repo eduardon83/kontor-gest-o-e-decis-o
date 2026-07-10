@@ -137,7 +137,17 @@ function NovaHansaPage() {
   return (
     <PainelShell papel="professor" titulo="Nova Hansa" descricao="Configure um novo jogo em cinco passos.">
       {resultado ? (
-        <ResultadoPainel resultado={resultado} onFechar={() => navigate({ to: "/painel/professor" })} />
+        <ResultadoPainel
+          resultado={resultado}
+          onAbrir={() =>
+            navigate({
+              to: "/painel/professor/competicao/$id",
+              params: { id: resultado.competicao_id },
+            })
+          }
+          onVoltar={() => navigate({ to: "/painel/professor" })}
+        />
+
       ) : (
         <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
           <Passos actual={passo} total={5} />

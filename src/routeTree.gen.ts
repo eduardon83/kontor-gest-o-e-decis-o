@@ -19,6 +19,7 @@ import { Route as AuthenticatedNovaHansaRouteImport } from './routes/_authentica
 import { Route as AuthenticatedPainelIndexRouteImport } from './routes/_authenticated/painel.index'
 import { Route as AuthenticatedPainelSuperAdminRouteImport } from './routes/_authenticated/painel.super-admin'
 import { Route as AuthenticatedPainelProfessorRouteImport } from './routes/_authenticated/painel.professor'
+import { Route as AuthenticatedPainelJogadorHomeRouteImport } from './routes/_authenticated/painel.jogador-home'
 import { Route as AuthenticatedPainelJogadorRouteImport } from './routes/_authenticated/painel.jogador'
 import { Route as AuthenticatedPainelAdminEscolarRouteImport } from './routes/_authenticated/painel.admin-escolar'
 import { Route as ApiPublicHooksResolverTickRouteImport } from './routes/api/public/hooks/resolver-tick'
@@ -78,6 +79,12 @@ const AuthenticatedPainelProfessorRoute =
     path: '/painel/professor',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPainelJogadorHomeRoute =
+  AuthenticatedPainelJogadorHomeRouteImport.update({
+    id: '/painel/jogador-home',
+    path: '/painel/jogador-home',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedPainelJogadorRoute =
   AuthenticatedPainelJogadorRouteImport.update({
     id: '/painel/jogador',
@@ -124,6 +131,7 @@ export interface FileRoutesByFullPath {
   '/auth/confirmado': typeof AuthConfirmadoRoute
   '/painel/admin-escolar': typeof AuthenticatedPainelAdminEscolarRoute
   '/painel/jogador': typeof AuthenticatedPainelJogadorRouteWithChildren
+  '/painel/jogador-home': typeof AuthenticatedPainelJogadorHomeRoute
   '/painel/professor': typeof AuthenticatedPainelProfessorRouteWithChildren
   '/painel/super-admin': typeof AuthenticatedPainelSuperAdminRoute
   '/painel/': typeof AuthenticatedPainelIndexRoute
@@ -141,6 +149,7 @@ export interface FileRoutesByTo {
   '/auth/confirmado': typeof AuthConfirmadoRoute
   '/painel/admin-escolar': typeof AuthenticatedPainelAdminEscolarRoute
   '/painel/jogador': typeof AuthenticatedPainelJogadorRouteWithChildren
+  '/painel/jogador-home': typeof AuthenticatedPainelJogadorHomeRoute
   '/painel/professor': typeof AuthenticatedPainelProfessorRouteWithChildren
   '/painel/super-admin': typeof AuthenticatedPainelSuperAdminRoute
   '/painel': typeof AuthenticatedPainelIndexRoute
@@ -160,6 +169,7 @@ export interface FileRoutesById {
   '/auth/confirmado': typeof AuthConfirmadoRoute
   '/_authenticated/painel/admin-escolar': typeof AuthenticatedPainelAdminEscolarRoute
   '/_authenticated/painel/jogador': typeof AuthenticatedPainelJogadorRouteWithChildren
+  '/_authenticated/painel/jogador-home': typeof AuthenticatedPainelJogadorHomeRoute
   '/_authenticated/painel/professor': typeof AuthenticatedPainelProfessorRouteWithChildren
   '/_authenticated/painel/super-admin': typeof AuthenticatedPainelSuperAdminRoute
   '/_authenticated/painel/': typeof AuthenticatedPainelIndexRoute
@@ -179,6 +189,7 @@ export interface FileRouteTypes {
     | '/auth/confirmado'
     | '/painel/admin-escolar'
     | '/painel/jogador'
+    | '/painel/jogador-home'
     | '/painel/professor'
     | '/painel/super-admin'
     | '/painel/'
@@ -196,6 +207,7 @@ export interface FileRouteTypes {
     | '/auth/confirmado'
     | '/painel/admin-escolar'
     | '/painel/jogador'
+    | '/painel/jogador-home'
     | '/painel/professor'
     | '/painel/super-admin'
     | '/painel'
@@ -214,6 +226,7 @@ export interface FileRouteTypes {
     | '/auth/confirmado'
     | '/_authenticated/painel/admin-escolar'
     | '/_authenticated/painel/jogador'
+    | '/_authenticated/painel/jogador-home'
     | '/_authenticated/painel/professor'
     | '/_authenticated/painel/super-admin'
     | '/_authenticated/painel/'
@@ -304,6 +317,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPainelProfessorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/painel/jogador-home': {
+      id: '/_authenticated/painel/jogador-home'
+      path: '/painel/jogador-home'
+      fullPath: '/painel/jogador-home'
+      preLoaderRoute: typeof AuthenticatedPainelJogadorHomeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/painel/jogador': {
       id: '/_authenticated/painel/jogador'
       path: '/painel/jogador'
@@ -386,6 +406,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedNovaHansaRoute: typeof AuthenticatedNovaHansaRoute
   AuthenticatedPainelAdminEscolarRoute: typeof AuthenticatedPainelAdminEscolarRoute
   AuthenticatedPainelJogadorRoute: typeof AuthenticatedPainelJogadorRouteWithChildren
+  AuthenticatedPainelJogadorHomeRoute: typeof AuthenticatedPainelJogadorHomeRoute
   AuthenticatedPainelProfessorRoute: typeof AuthenticatedPainelProfessorRouteWithChildren
   AuthenticatedPainelSuperAdminRoute: typeof AuthenticatedPainelSuperAdminRoute
   AuthenticatedPainelIndexRoute: typeof AuthenticatedPainelIndexRoute
@@ -395,6 +416,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedNovaHansaRoute: AuthenticatedNovaHansaRoute,
   AuthenticatedPainelAdminEscolarRoute: AuthenticatedPainelAdminEscolarRoute,
   AuthenticatedPainelJogadorRoute: AuthenticatedPainelJogadorRouteWithChildren,
+  AuthenticatedPainelJogadorHomeRoute: AuthenticatedPainelJogadorHomeRoute,
   AuthenticatedPainelProfessorRoute:
     AuthenticatedPainelProfessorRouteWithChildren,
   AuthenticatedPainelSuperAdminRoute: AuthenticatedPainelSuperAdminRoute,

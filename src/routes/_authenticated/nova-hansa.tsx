@@ -466,10 +466,12 @@ function Resumo(props: {
 
 function ResultadoPainel({
   resultado,
-  onFechar,
+  onAbrir,
+  onVoltar,
 }: {
   resultado: { codigo: string; competicao_id: string; emails_pendentes: string[] };
-  onFechar: () => void;
+  onAbrir: () => void;
+  onVoltar: () => void;
 }) {
   return (
     <div className="rounded-lg border border-gold bg-card p-8 shadow-sm">
@@ -497,14 +499,25 @@ function ResultadoPainel({
           </ul>
         </div>
       )}
-      <div className="mt-8 flex gap-3">
+      <div className="mt-8 flex flex-wrap gap-3">
         <button
-          onClick={onFechar}
-          className="rounded-md bg-navy px-5 py-2 text-sm font-medium text-paper hover:bg-deep"
+          onClick={onAbrir}
+          className="rounded-md bg-gold px-5 py-2 text-sm font-semibold text-navy hover:brightness-95"
         >
-          Voltar ao painel
+          Abrir a competição →
+        </button>
+        <button
+          onClick={onVoltar}
+          className="rounded-md border border-border bg-background px-5 py-2 text-sm font-medium text-foreground hover:bg-muted"
+        >
+          Voltar às minhas Hansas
         </button>
       </div>
+      <p className="mt-4 text-xs text-muted-foreground">
+        Próximos passos: partilhar o código com as equipas, conduzir uma equipa para demonstrar
+        ou avançar o turno quando todos estiverem submetidos.
+      </p>
     </div>
   );
 }
+

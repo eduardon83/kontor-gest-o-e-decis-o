@@ -2,6 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { MENU_POR_PAPEL, NOME_PAPEL, ROTAS_POR_PAPEL, type Papel } from "@/lib/painel";
+import { LogoKontor } from "@/components/marca/LogoKontor";
 
 export function PainelShell({
   papel,
@@ -52,7 +53,8 @@ export function PainelShell({
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-3">
           <div className="flex items-center gap-4">
             <Link to="/" className="flex items-center gap-3">
-              <span className="font-serif text-xl text-paper">Kontor</span>
+              <LogoKontor size={28} cor="gold" />
+              <span className="font-serif text-xl text-paper" style={{ fontWeight: 800 }}>Kontor</span>
             </Link>
             <span className="hidden font-mono text-[10px] uppercase tracking-[0.24em] text-gold sm:inline">
               {NOME_PAPEL[papelReal]}

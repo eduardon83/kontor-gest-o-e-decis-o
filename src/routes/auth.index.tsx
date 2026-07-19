@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { LogoKontor } from "@/components/marca/LogoKontor";
 
 export const Route = createFileRoute("/auth/")({
   component: AuthPage,
@@ -83,8 +84,9 @@ function AuthPage() {
     <div className="min-h-screen bg-paper">
       <div className="mx-auto flex min-h-screen max-w-6xl">
         <aside className="surface-navy hidden w-1/2 flex-col justify-between p-12 md:flex">
-          <Link to="/" className="font-serif text-2xl text-paper">
-            Kontor
+          <Link to="/" className="flex items-center gap-3">
+            <LogoKontor size={36} cor="gold" />
+            <span className="font-serif text-2xl text-paper" style={{ fontWeight: 800 }}>Kontor</span>
           </Link>
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.28em] text-gold">
@@ -106,8 +108,9 @@ function AuthPage() {
         <main className="flex w-full items-center justify-center p-6 md:w-1/2 md:p-12">
           <div className="w-full max-w-sm">
             <div className="mb-8 md:hidden">
-              <Link to="/" className="font-serif text-2xl">
-                Kontor
+              <Link to="/" className="flex items-center gap-3">
+                <LogoKontor size={32} cor="navy" />
+                <span className="font-serif text-2xl" style={{ fontWeight: 800 }}>Kontor</span>
               </Link>
             </div>
 

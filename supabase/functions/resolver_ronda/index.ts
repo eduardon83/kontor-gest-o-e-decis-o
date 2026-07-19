@@ -697,7 +697,20 @@ Deno.serve(async (req) => {
       const investigadoresNovo = b.estado.investigadores;
 
       // Indemnizações saem da caixa depois do net.
-      const caixaNovaFinal = caixaNova - indemnizacoes;
+      let caixaNovaFinal = caixaNova - indemnizacoes;
+
+      // Piso de caixa: se caixa < 0, aplica linha de crédito automática
+      // (spread punitivo de +6pp sobre o juro base — incorporada em dívida).
+      let creditoAutomatico = 0;
+      if (caixaNovaFinal < 0) {
+        creditoAutomatico = Math.ceil(-caixaNovaFinal);
+        dividaNova += creditoAutomatico;
+        caixaNovaFinal += creditoAutomatico;
+        b.auditoria.push({
+          acao: "linha_credito_automatica",
+          payload: { montante: creditoAutomatico, spread_pp: 6, juro_base: macro.juro },
+        });
+      }
 
       // ─── Demonstração financeira (P&L + Balanço + reconciliação) ────
       const receitaLinha: Record<Produto, number> = { cadeira: 0, mesa: 0, armario: 0 };

@@ -11,6 +11,7 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { LogoKontor } from "@/components/marca/LogoKontor";
 import { supabase } from "@/integrations/supabase/client";
 import { ROTAS_POR_PAPEL, type Papel } from "@/lib/painel";
 
@@ -32,6 +33,9 @@ function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
+        <div className="mb-6 flex justify-center">
+          <LogoKontor size={64} cor="navy" />
+        </div>
         <p className="font-mono text-xs tracking-widest text-muted-foreground">KONTOR · 404</p>
         <h1 className="mt-4 font-serif text-5xl text-foreground">Página não encontrada</h1>
         <p className="mt-3 text-sm text-muted-foreground">

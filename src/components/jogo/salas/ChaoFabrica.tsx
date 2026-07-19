@@ -32,26 +32,39 @@ export function ChaoFabrica() {
   const cooLoc = (rascunho.COO ?? {}) as Record<string, any>;
   const cooEff = { ...cooDec, ...cooLoc } as Record<string, any>;
   const alvo = (cooEff.producao ?? {}) as Record<string, number>;
-  const tierPlan = String(cooEff.tier ?? "standard");
-  const ritmoPlan = String(cooEff.ritmo ?? "normal");
-  const overtimePlan = ritmoPlan === "horas_extra" ? 40 : 0;
+  const tierPedido = (cooEff.tier ?? "standard") as Tier;
+  const tierRes = tierEfetivo(tierPedido, idDesbl);
+  const tierPlan: Tier = tierRes.aplicado;
+  const ritmoPlan = (cooEff.ritmo ?? "normal") as Ritmo;
   const maquinasPlan = maquinas + Math.max(0, Number(cooEff.comprar_maquinas ?? 0));
-  const capLabPlan = (trabalhadores * 160 + overtimePlan * trabalhadores) * prodMultReal;
-  const capMachPlan = maquinasPlan * 450 * prodMultReal * automacao;
-  const totalAlvo = PRODS.reduce((s, p) => s + Number(alvo[p] ?? 0), 0);
-  const labNeed = PRODS.reduce((s, p) => s + Number(alvo[p] ?? 0) * MAO[p] * MAO_MULT[tierPlan], 0);
-  const machNeed = PRODS.reduce((s, p) => s + Number(alvo[p] ?? 0) * MACH_H[p], 0);
-  const rawLab = labNeed > 0 ? capLabPlan / labNeed : Infinity;
-  const rawMach = machNeed > 0 ? capMachPlan / machNeed : Infinity;
-  const rawInt = Math.min(rawLab, rawMach);
-  const scaleInt = Math.min(1, rawInt);
+
+  const capPlan = capacidadeCOO({
+    trabalhadores,
+    maquinas: maquinasPlan,
+    prodMult: prodMultReal,
+    tier: tierPlan,
+    ritmo: ritmoPlan,
+    alvo,
+    subcontratacao: Number(cooEff.subcontratacao ?? 0),
+    automacao: idDesbl.includes("AUTOMACAO"),
+  });
+  const capLabPlan = capPlan.capLabour;
+  const capMachPlan = capPlan.capMachine;
+  const totalAlvo = capPlan.totalAlvo;
+  const labNeed = capPlan.labNeed;
+  const machNeed = capPlan.machNeed;
+  const scale = capPlan.scale;
+  const scaleInt = capPlan.scaleInt;
+  const subEff = capPlan.subEff;
   const sub = Math.max(0, Math.min(1, Number(cooEff.subcontratacao ?? 0)));
-  const subEff = Math.min(0.5, sub);
-  const scale = Math.min(1, scaleInt * (1 + subEff));
+  const rawInt = Math.min(capPlan.rawLab, capPlan.rawMach);
+  const rawLab = capPlan.rawLab;
+  const rawMach = capPlan.rawMach;
   const utilizacao = Math.min(1, Math.max(labNeed / Math.max(1, capLabPlan), machNeed / Math.max(1, capMachPlan)));
   const supNeed = Math.ceil(trabalhadores / 8) || 0;
   const gestNeed = trabalhadores > 24 ? Math.ceil(trabalhadores / 24) : 0;
   const descobertos = Math.max(0, trabalhadores - supervisores * 8);
+
 
   return (
     <div className="space-y-6">

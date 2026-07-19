@@ -460,26 +460,48 @@ Deno.serve(async (req) => {
 
     const vendasPorEquipa = new Map<string, Record<Produto, number>>();
     const receitasPorEquipa = new Map<string, number>();
+    // Procura absoluta atribuída e quota em unidades por equipa (para KPIs do CMO).
+    const procuraUnitPorEquipa = new Map<string, number>();
+    const quotaUnitPorEquipa = new Map<string, number>();
+    const vendasUnitPorEquipa = new Map<string, number>();
 
     for (const [_m, entradas] of apeloPorMercado) {
       for (const p of Object.keys(PRODUTOS) as Produto[]) {
-        const precoMedio = entradas.reduce((s, e) => s + e.precos[p], 0) / Math.max(1, entradas.length);
-        const demand = PRODUTOS[p].procura_base
-          * Math.pow(PRODUTOS[p].ref / Math.max(1, precoMedio), 0.4)
-          * macro.crescimento
-          * (macro.confianca / 100)
-          * perfilChoque(p);
+        const precosValidos = entradas.map((e) => Number(e.precos[p])).filter((x) => x > 0);
+        const precoMedio = precosValidos.length
+          ? precosValidos.reduce((s, x) => s + x, 0) / precosValidos.length
+          : PRODUTOS[p].ref;
+        const perfilFactor = perfilChoque(p);
+        const cresc = Number.isFinite(macro.crescimento) ? macro.crescimento : 1;
+        const conf = Number.isFinite(macro.confianca) ? macro.confianca : 100;
+        const demand = Math.max(0, Math.round(
+          PRODUTOS[p].procura_base
+            * Math.pow(PRODUTOS[p].ref / Math.max(1, precoMedio), 0.4)
+            * cresc
+            * (conf / 100)
+            * (Number.isFinite(perfilFactor) && perfilFactor > 0 ? perfilFactor : 1),
+        ));
+        if (!Number.isFinite(demand) || demand <= 0) {
+          console.warn("[resolver] procura anómala", { produto: p, demand, precoMedio, perfilFactor, cresc, conf });
+        }
         const somaApelo = entradas.reduce((s, e) => s + e.apelo[p], 0) || 1;
         for (const e of entradas) {
           const quota = e.apelo[p] / somaApelo;
-          const sold = Math.min(Math.round(demand * quota), Math.floor(e.producao[p]));
+          const alocado = Math.round(demand * quota);
+          const sold = Math.min(alocado, Math.floor(e.producao[p]));
           const cur = vendasPorEquipa.get(e.equipa_id) ?? { cadeira: 0, mesa: 0, armario: 0 };
           cur[p] = sold;
           vendasPorEquipa.set(e.equipa_id, cur);
           const receitaP = sold * e.precos[p] * (1 - e.export_share + e.export_share * CONST.exportacao_mult);
           receitasPorEquipa.set(e.equipa_id, (receitasPorEquipa.get(e.equipa_id) ?? 0) + receitaP);
+          procuraUnitPorEquipa.set(e.equipa_id, (procuraUnitPorEquipa.get(e.equipa_id) ?? 0) + alocado);
+          vendasUnitPorEquipa.set(e.equipa_id, (vendasUnitPorEquipa.get(e.equipa_id) ?? 0) + sold);
         }
       }
+    }
+    for (const [eid, proc] of procuraUnitPorEquipa) {
+      const vend = vendasUnitPorEquipa.get(eid) ?? 0;
+      quotaUnitPorEquipa.set(eid, proc > 0 ? (vend / proc) * 100 : 0);
     }
 
     // Eventos internos + P&L + snapshots.
@@ -819,6 +841,8 @@ Deno.serve(async (req) => {
           marketing: b.marketing,
           producao_total: b.producao.cadeira + b.producao.mesa + b.producao.armario,
         },
+        procura: procuraUnitPorEquipa.get(b.equipa_id) ?? 0,
+        quota: quotaUnitPorEquipa.get(b.equipa_id) ?? 0,
         macro, notas: b.auditoria,
       };
       snapshotsInsert.push({ equipa_id: b.equipa_id, ronda_id: ronda.id, snapshot });

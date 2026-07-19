@@ -362,9 +362,9 @@ function SeguroBox({ ativo, onChange, disabled }: { ativo: boolean; onChange: (v
 
 /* ============================ Helpers COO ============================ */
 
-const MAO_MULT: Record<string, number> = { standard: 1.0, fine: 1.58, artisan: 2.1 };
-const MAO: Record<string, number> = { cadeira: 0.6, mesa: 1.4, armario: 2.2 };
-const MACH_H: Record<string, number> = { cadeira: 1, mesa: 2.5, armario: 4 };
+import { capacidadeCOO, tierEfetivo, RITMO_MULT, type Tier, type Ritmo } from "@/lib/jogo/capacidade";
+import { ID_NOS } from "@/lib/jogo/id-arvore";
+
 
 function OpcoesDescr({
   rotulo, v, opcoes, onChange, disabled,

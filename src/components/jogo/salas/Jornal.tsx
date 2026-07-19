@@ -19,10 +19,34 @@ export function Jornal() {
   const faseEcon = (snapshotAtual as any)?.fase_economica ?? (ultimoResolvido?.snapshot as any)?.macro?.fase ?? null;
 
   // Manchetes: em modo real são derivadas da economia macro e do próprio desempenho.
+  const macroAtual = (snapshotAtual as any)?.macro as
+    | { juro: number; inflacao: number; crescimento: number; confianca: number }
+    | undefined;
+  const macroAnterior = (ultimoResolvido?.snapshot as any)?.macro as
+    | { juro: number; inflacao: number; crescimento: number; confianca: number }
+    | undefined;
+  const notas = ((snapshotAtual as any)?.notas ?? []) as { acao: string; payload?: Record<string, unknown> }[];
+
   const manchetesReais = (() => {
     if (!emReal) return null;
     const arr: { tag: string; titulo: string }[] = [];
     if (faseEcon) arr.push({ tag: "Economia", titulo: `Fase macroeconómica: ${faseEcon}` });
+    if (macroAtual) {
+      const dJuro = macroAnterior ? macroAtual.juro - macroAnterior.juro : 0;
+      if (Math.abs(dJuro) >= 0.25) {
+        arr.push({
+          tag: "Política monetária",
+          titulo: `Juro base ${dJuro > 0 ? "sobe" : "desce"} para ${macroAtual.juro.toFixed(2)}%`,
+        });
+      } else {
+        arr.push({ tag: "Política monetária", titulo: `Juro base estabiliza em ${macroAtual.juro.toFixed(2)}%` });
+      }
+      arr.push({ tag: "Preços", titulo: `Inflação a ${macroAtual.inflacao.toFixed(1)}%` });
+      arr.push({
+        tag: "Ciclo",
+        titulo: `Crescimento ${(macroAtual.crescimento * 100 - 100).toFixed(1)}% · confiança ${Math.round(macroAtual.confianca)}`,
+      });
+    }
     if (fin?.pnl?.resultado_liquido != null) {
       const rl = Number(fin.pnl.resultado_liquido);
       arr.push({
@@ -120,9 +144,33 @@ export function Jornal() {
         <div className="rounded-sm border bg-card p-4">
           <h3 className="font-serif text-lg">Decisões desta ronda</h3>
           {emReal ? (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Vê o registo detalhado por lugar no gabinete — o resumo aqui é anedótico.
-            </p>
+            notas.length === 0 ? (
+              <p className="mt-3 text-sm text-muted-foreground">
+                Sem eventos de decisão registados neste turno.
+              </p>
+            ) : (
+              <ul className="mt-3 space-y-2 text-sm">
+                {notas.slice(0, 8).map((n, i) => {
+                  const estado = n.acao.includes("ignorad") || n.acao.includes("invalid") || n.acao.includes("anulad")
+                    ? "anulado"
+                    : n.acao.includes("clampad") || n.acao.includes("reduzid") || n.acao.includes("subid") || n.acao.includes("limit") || n.acao.includes("status_quo") || n.acao.includes("credito_automatica")
+                      ? "ajustado"
+                      : "aplicado";
+                  return (
+                    <li key={i} className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                          {n.acao.replace(/_/g, " ")}
+                        </span>
+                      </div>
+                      <span className={`mono shrink-0 text-[10px] uppercase tracking-widest ${CORES_ESTADO[estado as keyof typeof CORES_ESTADO]}`}>
+                        {estado}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )
           ) : (
             <ul className="mt-3 space-y-2 text-sm">
               {decisoesReais.map((d, i) => (
@@ -139,6 +187,7 @@ export function Jornal() {
             </ul>
           )}
         </div>
+
 
         <div className="rounded-sm border bg-card p-4">
           <h3 className="font-serif text-lg">Concorrência (valor)</h3>

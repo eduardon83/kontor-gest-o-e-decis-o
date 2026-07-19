@@ -35,7 +35,7 @@ type EstadoBase = {
 export const MAQUINAS_INICIAIS = 3;
 
 const DEFAULT_ESTADO = (capital: number): EstadoBase => ({
-  caixa: capital, ativos: 1, marca: 40, divida: 0,
+  caixa: capital, ativos: MAQUINAS_INICIAIS, marca: 40, divida: 0,
   moral: 65, stress_org: 30, ambicao_org: 55,
   maquinas: MAQUINAS_INICIAIS, forca_vendas: 3,
   trabalhadores: 8, supervisores: 1, investigadores: 0,
@@ -217,6 +217,10 @@ Deno.serve(async (req) => {
 
     const buffer: BufItem[] = [];
     const apeloPorMercado = new Map<string, BufItem[]>();
+    const equipasPorMercado = new Map<string, number>();
+    for (const eq of equipasArr) {
+      equipasPorMercado.set(eq.mercado_id, (equipasPorMercado.get(eq.mercado_id) ?? 0) + 1);
+    }
 
     // Custos de pesquisa (acoes_informacao.custo) desta ronda por equipa.
     const custosPesquisaPorEquipa = new Map<string, number>();
@@ -317,7 +321,21 @@ Deno.serve(async (req) => {
         armario: Math.max(0, Number(producaoDec.armario ?? 0)),
       };
 
-      // Capacidade — AUTOMACAO aplica ×1.15 ao capMachine.
+      // Fallback status quo: se COO não submeteu producao (todos zero e sem linhas
+      // de saída), aplica um alvo proporcional à procura base dividida pelas
+      // equipas do mercado. Evita que uma equipa que só ajusta preços fique com
+      // receita zero por omissão. Regista em auditoria.
+      const somaAlvo = alvo.cadeira + alvo.mesa + alvo.armario;
+      const linhasSaidaSet = new Set(linhasSaida);
+      if (somaAlvo === 0) {
+        const nEq = Math.max(1, equipasPorMercado.get(eq.mercado_id) ?? 1);
+        for (const p of Object.keys(PRODUTOS) as Produto[]) {
+          if (linhasSaidaSet.has(p)) continue;
+          alvo[p] = Math.max(1, Math.floor(PRODUTOS[p].procura_base / nEq));
+        }
+        auditoria.push({ acao: "producao_status_quo_aplicada", payload: { alvo: { ...alvo }, motivo: "COO_sem_producao" } });
+      }
+
       const automacaoMult = idDesbl.has("AUTOMACAO") ? 1.15 : 1;
       const capLabour = (trabalhadores * 160 + overtime * trabalhadores) * prodMult;
       const capMachine = (estado.maquinas + comprarMaquinas) * 450 * prodMult * automacaoMult;
@@ -564,8 +582,7 @@ Deno.serve(async (req) => {
         + b.empréstimo_novo - b.amortizar
         + equity - b.dividendos;
 
-      const dividaNova = b.estado.divida + b.empréstimo_novo - b.amortizar;
-      const ativosNovo = b.estado.ativos + comprarMaquinas * 0.5;
+      let dividaNova = b.estado.divida + b.empréstimo_novo - b.amortizar;
       const marcaNovo = clamp(b.estado.marca + Math.min(8, b.marketing / 3000) - 1, 0, 100);
       const prejuizosNovo = pre < 0
         ? b.estado.prejuizos_acum + Math.abs(pre)
@@ -680,7 +697,20 @@ Deno.serve(async (req) => {
       const investigadoresNovo = b.estado.investigadores;
 
       // Indemnizações saem da caixa depois do net.
-      const caixaNovaFinal = caixaNova - indemnizacoes;
+      let caixaNovaFinal = caixaNova - indemnizacoes;
+
+      // Piso de caixa: se caixa < 0, aplica linha de crédito automática
+      // (spread punitivo de +6pp sobre o juro base — incorporada em dívida).
+      let creditoAutomatico = 0;
+      if (caixaNovaFinal < 0) {
+        creditoAutomatico = Math.ceil(-caixaNovaFinal);
+        dividaNova += creditoAutomatico;
+        caixaNovaFinal += creditoAutomatico;
+        b.auditoria.push({
+          acao: "linha_credito_automatica",
+          payload: { montante: creditoAutomatico, spread_pp: 6, juro_base: macro.juro },
+        });
+      }
 
       // ─── Demonstração financeira (P&L + Balanço + reconciliação) ────
       const receitaLinha: Record<Produto, number> = { cadeira: 0, mesa: 0, armario: 0 };
@@ -700,9 +730,12 @@ Deno.serve(async (req) => {
       const ativosProdutivosValor = maquinasFim * 30000;
       const ativoTotal = Math.max(0, caixaNovaFinal) + ativosProdutivosValor;
       const capitalProprio = ativoTotal - dividaNova;
-      const valorEmpresa = Math.max(0, caixaNovaFinal) + ativosNovo * 30000 + marcaNovo * 1500 - dividaNova + Math.max(0, net) * 2;
+      // Valor da empresa: caixa + ativos produtivos + valor de marca − dívida
+      // + prémio pelo resultado líquido do turno.
+      const valorEmpresa = Math.max(0, caixaNovaFinal) + ativosProdutivosValor
+        + marcaNovo * 1500 - dividaNova + Math.max(0, net) * 2;
       const capex = comprarMaquinas * 60000;
-      const caixaReconstruida = b.estado.caixa + net - capex + b.empréstimo_novo - b.amortizar - b.dividendos - indemnizacoes;
+      const caixaReconstruida = b.estado.caixa + net - capex + b.empréstimo_novo - b.amortizar - b.dividendos - indemnizacoes + creditoAutomatico;
       const custosTotais = prodCost + fixed + interest;
 
       const financeiro = {
@@ -765,7 +798,7 @@ Deno.serve(async (req) => {
       };
 
       const snapshot: EstadoBase & Record<string, unknown> = {
-        caixa: caixaNovaFinal, ativos: ativosNovo, marca: marcaNovo, divida: dividaNova,
+        caixa: caixaNovaFinal, ativos: maquinasFim, marca: marcaNovo, divida: dividaNova,
         moral: Mn, stress_org: Sn, ambicao_org: An,
         maquinas: maquinasFim,
         forca_vendas: b.forca_vendas,

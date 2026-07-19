@@ -80,15 +80,21 @@ function Pagina() {
                   <td className="p-3 font-medium">{u.nome || "—"}</td>
                   <td className="p-3 text-muted-foreground">{u.email}</td>
                   <td className="p-3">
-                    <select
-                      className="rounded-md border border-border bg-background px-2 py-1 text-sm"
-                      value={u.papel}
-                      onChange={(e) => trocarPapel(u.id, e.target.value)}
-                    >
-                      <option value="jogador">Jogador</option>
-                      <option value="professor">Professor</option>
-                      <option value="admin_escolar">Admin escolar</option>
-                    </select>
+                    {u.papel === "super_admin" ? (
+                      <span className="inline-block rounded-md border border-gold/50 bg-gold/10 px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-gold">
+                        Super-administrador
+                      </span>
+                    ) : (
+                      <select
+                        className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+                        value={u.papel}
+                        onChange={(e) => trocarPapel(u.id, e.target.value)}
+                      >
+                        <option value="jogador">Jogador</option>
+                        <option value="professor">Professor</option>
+                        <option value="admin_escolar">Admin escolar</option>
+                      </select>
+                    )}
                   </td>
                   <td className="p-3 text-right"><Button size="sm" variant="ghost" onClick={carregar}>↻</Button></td>
                 </tr>

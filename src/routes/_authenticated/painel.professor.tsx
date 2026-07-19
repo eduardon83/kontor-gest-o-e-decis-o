@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { PainelShell } from "@/components/painel/PainelShell";
+import { CopiarCodigo } from "@/components/painel/CopiarCodigo";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/painel/professor")({
@@ -92,16 +93,19 @@ function PainelProfessor() {
                 </span>
               </div>
               {c.codigo && (
-                <div className="mt-4 rounded-md bg-navy px-3 py-2">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-gold">Código</p>
-                  <p className="font-mono text-base text-paper">{c.codigo}</p>
+                <div className="mt-4 flex items-center justify-between gap-3 rounded-md bg-navy px-3 py-2">
+                  <div>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-gold">Código</p>
+                    <p className="font-mono text-base text-paper">{c.codigo}</p>
+                  </div>
+                  <CopiarCodigo codigo={c.codigo} variante="escuro" />
                 </div>
               )}
-              <div className="mt-3">
+              <div className="mt-4">
                 <Link
                   to="/painel/professor/competicao/$id"
                   params={{ id: c.id }}
-                  className="inline-block rounded border border-border px-3 py-1 font-mono text-[11px] uppercase tracking-wider hover:border-gold"
+                  className="inline-flex w-full items-center justify-center rounded-md bg-gold px-4 py-2 text-sm font-semibold text-navy transition-colors hover:brightness-95"
                 >
                   Ver competição →
                 </Link>

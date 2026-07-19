@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { PainelShell } from "@/components/painel/PainelShell";
+import { CopiarCodigo } from "@/components/painel/CopiarCodigo";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/painel/professor")({

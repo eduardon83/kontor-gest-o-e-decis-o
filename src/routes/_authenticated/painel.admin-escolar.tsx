@@ -62,10 +62,17 @@ function Pagina() {
       )}
       {msg && <p className="mb-4 text-sm text-destructive">{msg}</p>}
 
-      <section className="mb-8">
-        <h2 className="mb-3 font-serif text-2xl">Convites de acesso</h2>
-        <ConvitesPapel papelDoUtilizador="admin_escolar" />
+      <section className="mb-8 space-y-6">
+        <div>
+          <h2 className="mb-3 font-serif text-2xl">Pedidos de acesso</h2>
+          <PedidosDocente />
+        </div>
+        <div>
+          <h2 className="mb-3 font-serif text-2xl">Convites de acesso</h2>
+          <ConvitesPapel papelDoUtilizador="admin_escolar" />
+        </div>
       </section>
+
 
 
       <section className="mb-8">

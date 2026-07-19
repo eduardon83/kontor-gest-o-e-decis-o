@@ -18,6 +18,7 @@ function Pagina() {
   const resultadosFn = useServerFn(resultadosCompeticao);
   const submissoesFn = useServerFn(submissoesRondaAtual);
   const avancarFn = useServerFn(avancarRondaAgora);
+  const regenerarFn = useServerFn(regenerarEconomia);
 
   const resultados = useQuery({
     queryKey: ["competicao", id, "resultados", "professor"],
@@ -30,6 +31,24 @@ function Pagina() {
   });
 
   const [avanceErro, setAvanceErro] = useState<string | null>(null);
+  const [regenMsg, setRegenMsg] = useState<string | null>(null);
+  const avancar = useMutation({
+    mutationFn: () => avancarFn({ data: { competicao_id: id } }),
+    onSuccess: () => { setAvanceErro(null); router.invalidate(); resultados.refetch(); submissoes.refetch(); },
+    onError: (e) => setAvanceErro(e instanceof Error ? e.message : "Falha ao avançar."),
+  });
+  const regenerar = useMutation({
+    mutationFn: () => regenerarFn({ data: { competicao_id: id } }),
+    onSuccess: (r: any) => {
+      setRegenMsg(
+        r?.ja_gerada
+          ? `Economia já existia · ${r.colaboradores} colaboradores.`
+          : `Economia gerada · ${r.colaboradores} colaboradores.`,
+      );
+      router.invalidate();
+    },
+    onError: (e) => setRegenMsg(e instanceof Error ? e.message : "Falha ao gerar economia."),
+  });
   const avancar = useMutation({
     mutationFn: () => avancarFn({ data: { competicao_id: id } }),
     onSuccess: () => { setAvanceErro(null); router.invalidate(); resultados.refetch(); submissoes.refetch(); },

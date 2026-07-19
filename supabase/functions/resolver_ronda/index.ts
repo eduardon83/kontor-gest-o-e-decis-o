@@ -35,7 +35,7 @@ type EstadoBase = {
 export const MAQUINAS_INICIAIS = 3;
 
 const DEFAULT_ESTADO = (capital: number): EstadoBase => ({
-  caixa: capital, ativos: 1, marca: 40, divida: 0,
+  caixa: capital, ativos: MAQUINAS_INICIAIS, marca: 40, divida: 0,
   moral: 65, stress_org: 30, ambicao_org: 55,
   maquinas: MAQUINAS_INICIAIS, forca_vendas: 3,
   trabalhadores: 8, supervisores: 1, investigadores: 0,

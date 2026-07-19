@@ -21,6 +21,7 @@ import {
 import { TemaProvider, useTema } from "@/components/tema/TemaProvider";
 import type { Tema, TemaSlots, TemaTokens } from "@/lib/tema/tipos";
 import { ConvitesPapel } from "@/components/painel/ConvitesPapel";
+import { PedidosDocente } from "@/components/painel/PedidosDocente";
 
 export const Route = createFileRoute("/_authenticated/painel/super-admin")({
   component: Pagina,
@@ -66,7 +67,12 @@ function AbaConvites() {
   useEffect(() => {
     (async () => { try { setInsts((await listar()) as Instituicao[]); } catch {} })();
   }, []);
-  return <ConvitesPapel papelDoUtilizador="super_admin" instituicoes={insts.map((i) => ({ id: i.id, nome: i.nome }))} />;
+  return (
+    <div className="space-y-6">
+      <PedidosDocente />
+      <ConvitesPapel papelDoUtilizador="super_admin" instituicoes={insts.map((i) => ({ id: i.id, nome: i.nome }))} />
+    </div>
+  );
 }
 
 function AbaInstituicoes() {

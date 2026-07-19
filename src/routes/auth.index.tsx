@@ -236,6 +236,42 @@ function AuthPage() {
                   </button>
                 </form>
 
+                {mode === "login" && (
+                  <div className="mt-4 text-center text-xs text-muted-foreground">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!email.trim()) {
+                          setErro("Introduza o email primeiro para reenviarmos a confirmação.");
+                          return;
+                        }
+                        setErro(null);
+                        setACarregar(true);
+                        try {
+                          const { error } = await supabase.auth.resend({
+                            type: "signup",
+                            email: email.trim(),
+                            options: {
+                              emailRedirectTo: `${window.location.origin}/auth/confirmado`,
+                            },
+                          });
+                          if (error) throw error;
+                          setEmailEnviadoPara(email.trim());
+                        } catch (err) {
+                          const msg =
+                            err instanceof Error ? err.message : "Não foi possível reenviar.";
+                          setErro(traduzErro(msg));
+                        } finally {
+                          setACarregar(false);
+                        }
+                      }}
+                      className="text-gold hover:underline"
+                    >
+                      Não recebeu o email de confirmação? Reenviar.
+                    </button>
+                  </div>
+                )}
+
                 <div className="mt-6 border-t border-border pt-6 text-center text-xs text-muted-foreground">
                   É aluno num jogo?{" "}
                   <Link to="/entrar-hansa" className="text-gold hover:underline">

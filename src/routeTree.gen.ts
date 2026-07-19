@@ -15,6 +15,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthIndexRouteImport } from './routes/auth.index'
 import { Route as AuthConfirmadoRouteImport } from './routes/auth.confirmado'
+import { Route as AuthConfirmRouteImport } from './routes/auth.confirm'
 import { Route as AuthenticatedNovaHansaRouteImport } from './routes/_authenticated/nova-hansa'
 import { Route as AuthenticatedPainelIndexRouteImport } from './routes/_authenticated/painel.index'
 import { Route as AuthenticatedPainelSuperAdminRouteImport } from './routes/_authenticated/painel.super-admin'
@@ -54,6 +55,11 @@ const AuthIndexRoute = AuthIndexRouteImport.update({
 const AuthConfirmadoRoute = AuthConfirmadoRouteImport.update({
   id: '/auth/confirmado',
   path: '/auth/confirmado',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthConfirmRoute = AuthConfirmRouteImport.update({
+  id: '/auth/confirm',
+  path: '/auth/confirm',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedNovaHansaRoute = AuthenticatedNovaHansaRouteImport.update({
@@ -127,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/demo': typeof DemoRoute
   '/entrar-hansa': typeof EntrarHansaRoute
   '/nova-hansa': typeof AuthenticatedNovaHansaRoute
+  '/auth/confirm': typeof AuthConfirmRoute
   '/auth/confirmado': typeof AuthConfirmadoRoute
   '/auth/': typeof AuthIndexRoute
   '/painel/admin-escolar': typeof AuthenticatedPainelAdminEscolarRoute
@@ -145,6 +152,7 @@ export interface FileRoutesByTo {
   '/demo': typeof DemoRoute
   '/entrar-hansa': typeof EntrarHansaRoute
   '/nova-hansa': typeof AuthenticatedNovaHansaRoute
+  '/auth/confirm': typeof AuthConfirmRoute
   '/auth/confirmado': typeof AuthConfirmadoRoute
   '/auth': typeof AuthIndexRoute
   '/painel/admin-escolar': typeof AuthenticatedPainelAdminEscolarRoute
@@ -165,6 +173,7 @@ export interface FileRoutesById {
   '/demo': typeof DemoRoute
   '/entrar-hansa': typeof EntrarHansaRoute
   '/_authenticated/nova-hansa': typeof AuthenticatedNovaHansaRoute
+  '/auth/confirm': typeof AuthConfirmRoute
   '/auth/confirmado': typeof AuthConfirmadoRoute
   '/auth/': typeof AuthIndexRoute
   '/_authenticated/painel/admin-escolar': typeof AuthenticatedPainelAdminEscolarRoute
@@ -185,6 +194,7 @@ export interface FileRouteTypes {
     | '/demo'
     | '/entrar-hansa'
     | '/nova-hansa'
+    | '/auth/confirm'
     | '/auth/confirmado'
     | '/auth/'
     | '/painel/admin-escolar'
@@ -203,6 +213,7 @@ export interface FileRouteTypes {
     | '/demo'
     | '/entrar-hansa'
     | '/nova-hansa'
+    | '/auth/confirm'
     | '/auth/confirmado'
     | '/auth'
     | '/painel/admin-escolar'
@@ -222,6 +233,7 @@ export interface FileRouteTypes {
     | '/demo'
     | '/entrar-hansa'
     | '/_authenticated/nova-hansa'
+    | '/auth/confirm'
     | '/auth/confirmado'
     | '/auth/'
     | '/_authenticated/painel/admin-escolar'
@@ -241,6 +253,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   DemoRoute: typeof DemoRoute
   EntrarHansaRoute: typeof EntrarHansaRoute
+  AuthConfirmRoute: typeof AuthConfirmRoute
   AuthConfirmadoRoute: typeof AuthConfirmadoRoute
   AuthIndexRoute: typeof AuthIndexRoute
   ApiPublicHooksResolverTickRoute: typeof ApiPublicHooksResolverTickRoute
@@ -288,6 +301,13 @@ declare module '@tanstack/react-router' {
       path: '/auth/confirmado'
       fullPath: '/auth/confirmado'
       preLoaderRoute: typeof AuthConfirmadoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/confirm': {
+      id: '/auth/confirm'
+      path: '/auth/confirm'
+      fullPath: '/auth/confirm'
+      preLoaderRoute: typeof AuthConfirmRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/nova-hansa': {
@@ -408,6 +428,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   DemoRoute: DemoRoute,
   EntrarHansaRoute: EntrarHansaRoute,
+  AuthConfirmRoute: AuthConfirmRoute,
   AuthConfirmadoRoute: AuthConfirmadoRoute,
   AuthIndexRoute: AuthIndexRoute,
   ApiPublicHooksResolverTickRoute: ApiPublicHooksResolverTickRoute,

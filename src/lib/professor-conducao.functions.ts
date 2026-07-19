@@ -127,6 +127,24 @@ export const resolverTurnoComoProfessor = createServerFn({ method: "POST" })
     await assertPodeConduzir(supabase, userId, data.competicao_id);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Idempotente: se ainda não há economia_seed, gera-a antes de resolver.
+    const { data: seedExistente } = await supabaseAdmin
+      .from("economia_seed").select("competicao_id").eq("competicao_id", data.competicao_id).maybeSingle();
+    if (!seedExistente) {
+      const url0 = process.env.SUPABASE_URL!;
+      const key0 = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+      const rge = await fetch(`${url0}/functions/v1/gerar_economia`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key0}`, apikey: key0, "content-type": "application/json" },
+        body: JSON.stringify({ competicao_id: data.competicao_id }),
+      });
+      const bge = await rge.json().catch(() => ({}));
+      if (!rge.ok || bge?.ok === false) {
+        throw new Error(bge?.error ?? `gerar_economia falhou (${rge.status}).`);
+      }
+    }
+
     const { data: ronda } = await supabaseAdmin
       .from("rondas")
       .select("id, indice, estado")

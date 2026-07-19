@@ -1,11 +1,10 @@
 import { Cog, HardHat, ShieldCheck, ClipboardList } from "lucide-react";
 import { useJogo } from "../JogoContext";
+import { capacidadeCOO, MAO_MULT, MAO_H, MACH_H, tierEfetivo, type Tier, type Ritmo } from "@/lib/jogo/capacidade";
 
-const MAO_MULT: Record<string, number> = { standard: 1.0, fine: 1.58, artisan: 2.1 };
-const MAO: Record<string, number> = { cadeira: 0.6, mesa: 1.4, armario: 2.2 };
-const MACH_H: Record<string, number> = { cadeira: 1, mesa: 2.5, armario: 4 };
 const PRODS = ["cadeira", "mesa", "armario"] as const;
 const NOMES: Record<string, string> = { cadeira: "Cadeira", mesa: "Mesa", armario: "Armário" };
+
 
 export function ChaoFabrica() {
   const { snapshotAtual, rascunho, decisoes, ronda_indice } = useJogo();
@@ -17,15 +16,19 @@ export function ChaoFabrica() {
   const maquinas = Number(snap.maquinas ?? 0);
   const prodMultReal = Number(snap.prodMult ?? 1);
   const idDesbl: string[] = Array.isArray(snap.id?.desbloqueados) ? snap.id.desbloqueados : [];
-  const automacao = idDesbl.includes("AUTOMACAO") ? 1.15 : 1;
+  
 
   // ── ÚLTIMO TURNO RESOLVIDO ─────────────────────────────────────────
   const turnoResolvido = Number(snap.turno ?? 0);
-  const ritmoReal = String(snap.ritmo ?? "normal");
-  const overtimeReal = ritmoReal === "horas_extra" ? 40 : 0;
-  const tierReal = Object.values(snap.tiers ?? {})[0] as string ?? "standard";
-  const capLabReal = (trabalhadores * 160 + overtimeReal * trabalhadores) * prodMultReal;
-  const capMachReal = maquinas * 450 * prodMultReal * automacao;
+  const ritmoReal = (snap.ritmo ?? "normal") as Ritmo;
+  const tierReal = (Object.values(snap.tiers ?? {})[0] as Tier) ?? "standard";
+  const capReal = capacidadeCOO({
+    trabalhadores, maquinas, prodMult: prodMultReal, tier: tierReal, ritmo: ritmoReal,
+    alvo: {}, subcontratacao: 0, automacao: idDesbl.includes("AUTOMACAO"),
+  });
+  const capLabReal = capReal.capLabour;
+  const capMachReal = capReal.capMachine;
+
   const producaoResumo = Number(snap.decisoes_resumo?.producao_total ?? 0);
 
   // ── TURNO ATUAL — planeado (rascunho ou decisão submetida do COO) ──
@@ -33,26 +36,39 @@ export function ChaoFabrica() {
   const cooLoc = (rascunho.COO ?? {}) as Record<string, any>;
   const cooEff = { ...cooDec, ...cooLoc } as Record<string, any>;
   const alvo = (cooEff.producao ?? {}) as Record<string, number>;
-  const tierPlan = String(cooEff.tier ?? "standard");
-  const ritmoPlan = String(cooEff.ritmo ?? "normal");
-  const overtimePlan = ritmoPlan === "horas_extra" ? 40 : 0;
+  const tierPedido = (cooEff.tier ?? "standard") as Tier;
+  const tierRes = tierEfetivo(tierPedido, idDesbl);
+  const tierPlan: Tier = tierRes.aplicado;
+  const ritmoPlan = (cooEff.ritmo ?? "normal") as Ritmo;
   const maquinasPlan = maquinas + Math.max(0, Number(cooEff.comprar_maquinas ?? 0));
-  const capLabPlan = (trabalhadores * 160 + overtimePlan * trabalhadores) * prodMultReal;
-  const capMachPlan = maquinasPlan * 450 * prodMultReal * automacao;
-  const totalAlvo = PRODS.reduce((s, p) => s + Number(alvo[p] ?? 0), 0);
-  const labNeed = PRODS.reduce((s, p) => s + Number(alvo[p] ?? 0) * MAO[p] * MAO_MULT[tierPlan], 0);
-  const machNeed = PRODS.reduce((s, p) => s + Number(alvo[p] ?? 0) * MACH_H[p], 0);
-  const rawLab = labNeed > 0 ? capLabPlan / labNeed : Infinity;
-  const rawMach = machNeed > 0 ? capMachPlan / machNeed : Infinity;
-  const rawInt = Math.min(rawLab, rawMach);
-  const scaleInt = Math.min(1, rawInt);
+
+  const capPlan = capacidadeCOO({
+    trabalhadores,
+    maquinas: maquinasPlan,
+    prodMult: prodMultReal,
+    tier: tierPlan,
+    ritmo: ritmoPlan,
+    alvo,
+    subcontratacao: Number(cooEff.subcontratacao ?? 0),
+    automacao: idDesbl.includes("AUTOMACAO"),
+  });
+  const capLabPlan = capPlan.capLabour;
+  const capMachPlan = capPlan.capMachine;
+  const totalAlvo = capPlan.totalAlvo;
+  const labNeed = capPlan.labNeed;
+  const machNeed = capPlan.machNeed;
+  const scale = capPlan.scale;
+  const scaleInt = capPlan.scaleInt;
+  const subEff = capPlan.subEff;
   const sub = Math.max(0, Math.min(1, Number(cooEff.subcontratacao ?? 0)));
-  const subEff = Math.min(0.5, sub);
-  const scale = Math.min(1, scaleInt * (1 + subEff));
+  const rawInt = Math.min(capPlan.rawLab, capPlan.rawMach);
+  const rawLab = capPlan.rawLab;
+  const rawMach = capPlan.rawMach;
   const utilizacao = Math.min(1, Math.max(labNeed / Math.max(1, capLabPlan), machNeed / Math.max(1, capMachPlan)));
   const supNeed = Math.ceil(trabalhadores / 8) || 0;
   const gestNeed = trabalhadores > 24 ? Math.ceil(trabalhadores / 24) : 0;
   const descobertos = Math.max(0, trabalhadores - supervisores * 8);
+
 
   return (
     <div className="space-y-6">
@@ -92,7 +108,7 @@ export function ChaoFabrica() {
                   </div>
                 </div>
                 <div className="mono text-right text-[10px] uppercase text-muted-foreground">
-                  <div>mão {(alv * MAO[p] * MAO_MULT[tierPlan]).toFixed(0)} h</div>
+                  <div>mão {(alv * MAO_H[p] * MAO_MULT[tierPlan]).toFixed(0)} h</div>
                   <div>máq {(alv * MACH_H[p]).toFixed(0)} h</div>
                 </div>
               </li>

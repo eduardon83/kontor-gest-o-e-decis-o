@@ -4,6 +4,10 @@ import { useJogo } from "./JogoContext";
 import { EstadoEquipa } from "./EstadoEquipa";
 import { TotalComprometidoCompacto } from "./PainelCustosComprometidos";
 import type { Lugar } from "@/lib/jogo/tipos";
+import { capacidadeCOO, tierEfetivo, MAO_MULT, type Tier, type Ritmo } from "@/lib/jogo/capacidade";
+import { ID_NOS } from "@/lib/jogo/id-arvore";
+
+
 
 const POSTURAS: { valor: string; titulo: string; descricao: string }[] = [
   { valor: "Crescimento", titulo: "Crescimento", descricao: "Prioriza a expansão de vendas e capacidade produtiva." },
@@ -362,9 +366,7 @@ function SeguroBox({ ativo, onChange, disabled }: { ativo: boolean; onChange: (v
 
 /* ============================ Helpers COO ============================ */
 
-const MAO_MULT: Record<string, number> = { standard: 1.0, fine: 1.58, artisan: 2.1 };
-const MAO: Record<string, number> = { cadeira: 0.6, mesa: 1.4, armario: 2.2 };
-const MACH_H: Record<string, number> = { cadeira: 1, mesa: 2.5, armario: 4 };
+
 
 function OpcoesDescr({
   rotulo, v, opcoes, onChange, disabled,
@@ -435,10 +437,10 @@ function MaquinasField({
 }
 
 function PainelCapacidadeCOO({ valor, snapshot }: { valor: Record<string, any>; snapshot: any }) {
-  const snap = (snapshot ?? {}) as Record<string, number | undefined>;
+  const snap = (snapshot ?? {}) as Record<string, any>;
   const trabalhadores = Number(snap.trabalhadores ?? 0);
   const supervisores = Number(snap.supervisores ?? 0);
-  const gestores = Number((snap as any).gestores ?? 0);
+  const gestores = Number(snap.gestores ?? 0);
   const maquinas = Number(snap.maquinas ?? 0) + Math.max(0, Number(valor.comprar_maquinas ?? 0));
   const moralOrg = Number(snap.moral ?? 50);
   const ambicao = 50; const stress = 40;
@@ -454,72 +456,93 @@ function PainelCapacidadeCOO({ valor, snapshot }: { valor: Record<string, any>; 
       - coordPen,
   ));
 
-  const ritmo = String(valor.ritmo ?? "normal");
-  const overtime = ritmo === "horas_extra" ? 40 : 0;
-  const tier = String(valor.tier ?? "standard");
-  const idDesbl: string[] = Array.isArray((snap as any).id?.desbloqueados) ? (snap as any).id.desbloqueados : [];
-  const automacao = idDesbl.includes("AUTOMACAO") ? 1.15 : 1;
+  const idDesbl: string[] = Array.isArray(snap.id?.desbloqueados) ? snap.id.desbloqueados : [];
+  const ritmoPedido = (valor.ritmo ?? "normal") as Ritmo;
+  const tierPedido = (valor.tier ?? "standard") as Tier;
+  const tierRes = tierEfetivo(tierPedido, idDesbl);
+  const tier = tierRes.aplicado;
 
-  const capLabour = (trabalhadores * 160 + overtime * trabalhadores) * prodMult;
-  const capMachine = maquinas * 450 * prodMult * automacao;
+  const cap = capacidadeCOO({
+    trabalhadores,
+    maquinas,
+    prodMult,
+    tier,
+    ritmo: ritmoPedido,
+    alvo: (valor.producao ?? {}) as Record<string, number>,
+    subcontratacao: Number(valor.subcontratacao ?? 0),
+    automacao: idDesbl.includes("AUTOMACAO"),
+  });
 
-  const alvo = (valor.producao ?? {}) as Record<string, number>;
-  const labNeed = (["cadeira","mesa","armario"] as const)
-    .reduce((s, p) => s + Number(alvo[p] ?? 0) * MAO[p] * MAO_MULT[tier], 0);
-  const machNeed = (["cadeira","mesa","armario"] as const)
-    .reduce((s, p) => s + Number(alvo[p] ?? 0) * MACH_H[p], 0);
-  const totalAlvo = Number(alvo.cadeira ?? 0) + Number(alvo.mesa ?? 0) + Number(alvo.armario ?? 0);
-
-  // Igual ao resolver: scale interno (limita mão-de-obra/máquinas), com teto de subcontratação a 50%.
-  const rawLab = labNeed > 0 ? capLabour / labNeed : Infinity;
-  const rawMach = machNeed > 0 ? capMachine / machNeed : Infinity;
-  const rawInt = Math.min(rawLab, rawMach);
-  const scaleInt = Math.min(1, rawInt);
+  const excede = cap.totalAlvo > 0 && cap.scale < 1;
+  const capSubUn = Math.floor(cap.capIntUn * cap.subEff);
   const sub = Math.max(0, Math.min(1, Number(valor.subcontratacao ?? 0)));
-  const subEff = Math.min(0.5, sub);
-  const scaleFinal = Math.min(1, scaleInt * (1 + subEff));
-  const limitante = rawLab < rawMach ? "mão-de-obra" : "máquinas";
-
-  const capIntUn = Math.floor(totalAlvo * scaleInt);
-  const capSubUn = Math.floor(capIntUn * subEff);
-  const producaoUn = Math.floor(totalAlvo * scaleFinal);
-  const subUn = Math.max(0, producaoUn - capIntUn);
-  const excede = totalAlvo > 0 && scaleFinal < 1;
-
-  // Máximo produzível (aproximação ao mix atual, sem limitar a 100% do alvo).
-  const maxIntUn = Number.isFinite(rawInt) ? Math.floor(totalAlvo * rawInt) : capIntUn;
-  const maxTotalUn = Number.isFinite(rawInt) ? Math.floor(totalAlvo * rawInt * (1 + subEff)) : producaoUn;
-  const folga = maxTotalUn > 0 && totalAlvo > 0 ? Math.max(0, 1 - totalAlvo / maxTotalUn) : 0;
+  const ritmoMultPct = Math.round(cap.ritmoMult * 100);
 
   return (
     <div className="space-y-3 rounded-sm border border-gold/30 bg-gold/5 p-3">
+      {tierRes.reduzido && (
+        <p className="rounded-sm border border-destructive/40 bg-destructive/5 p-2 text-xs font-medium text-destructive">
+          Tier <span className="mono">{tierPedido}</span> requer o nó de I&D <span className="mono">{tierRes.faltaNo}</span> — o resolver aplica <span className="mono">{tier}</span>.
+        </p>
+      )}
+      {ritmoPedido === "ferias" && (
+        <p className="rounded-sm border border-destructive/40 bg-destructive/5 p-2 text-xs font-medium text-destructive">
+          Ritmo <span className="mono">férias</span> — capacidade de mão-de-obra = 0. A produção será nula neste turno.
+        </p>
+      )}
       <div>
         <div className="mono text-[10px] uppercase tracking-widest text-gold">Capacidade estimada</div>
-        {totalAlvo === 0 ? (
+        {cap.totalAlvo === 0 ? (
           <p className="mt-1 text-sm">Define alvos de produção para veres a capacidade.</p>
         ) : excede ? (
           <>
             <p className="mt-1 text-sm">
-              ≈ <span className="mono font-semibold">{producaoUn}</span> de{" "}
-              <span className="mono">{totalAlvo}</span> un pedidas · limitada por{" "}
-              <span className="font-semibold">{limitante}</span>
+              ≈ <span className="mono font-semibold">{cap.producaoUn}</span> de{" "}
+              <span className="mono">{cap.totalAlvo}</span> un pedidas · limitada por{" "}
+              <span className="font-semibold">{cap.limitante}</span>
             </p>
             <p className="mt-1 text-xs font-medium text-destructive">
-              Estás a pedir {totalAlvo}; a capacidade é ~{producaoUn}. Reduz alvos, sobe máquinas, usa horas extra ou aumenta subcontratação.
+              Estás a pedir {cap.totalAlvo}; a capacidade é ~{cap.producaoUn}. Reduz alvos, sobe máquinas, usa horas extra ou aumenta subcontratação.
             </p>
           </>
         ) : (
           <p className="mt-1 text-sm">
-            Capacidade suficiente · podes produzir até ~<span className="mono font-semibold">{maxTotalUn}</span> un
-            <span className="text-muted-foreground"> (folga ~{Math.round(folga * 100)}%)</span>
+            Capacidade suficiente · podes produzir até ~<span className="mono font-semibold">{cap.maxTotalUn}</span> un
+            <span className="text-muted-foreground"> (folga ~{Math.round(cap.folga * 100)}%)</span>
           </p>
         )}
         <div className="mono mt-2 grid grid-cols-2 gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
-          <div>capLabour ≈ <span className="text-foreground">{Math.round(capLabour)}</span> h</div>
-          <div>capMachine ≈ <span className="text-foreground">{Math.round(capMachine)}</span> h</div>
-          <div>labNeed ≈ <span className="text-foreground">{Math.round(labNeed)}</span> h</div>
-          <div>machNeed ≈ <span className="text-foreground">{Math.round(machNeed)}</span> h</div>
+          <div>capLabour ≈ <span className="text-foreground">{Math.round(cap.capLabour)}</span> h</div>
+          <div>capMachine ≈ <span className="text-foreground">{Math.round(cap.capMachine)}</span> h</div>
+          <div>labNeed ≈ <span className="text-foreground">{Math.round(cap.labNeed)}</span> h</div>
+          <div>machNeed ≈ <span className="text-foreground">{Math.round(cap.machNeed)}</span> h</div>
         </div>
+        <div className="mono mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+          tier <span className="text-foreground">{tier}</span> (mão ×{MAO_MULT[tier].toFixed(2)}) · ritmo <span className="text-foreground">{ritmoPedido.replace("_"," ")}</span> ({ritmoMultPct}% base{cap.overtime > 0 ? ` + ${cap.overtime}h` : ""})
+        </div>
+      </div>
+
+      <div className="border-t border-gold/20 pt-3">
+        <div className="mono text-[10px] uppercase tracking-widest text-gold">I&D · nós desbloqueados</div>
+        {idDesbl.length === 0 ? (
+          <p className="mt-1 text-xs text-muted-foreground">Nenhum nó desbloqueado ainda. Tier limitado a Standard; sem AUTOMACAO nem LEAN.</p>
+        ) : (
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {idDesbl.map((id) => {
+              const no = ID_NOS.find((n) => n.id === id);
+              return (
+                <span key={id} className="mono rounded-sm border border-gold/40 bg-gold/10 px-2 py-0.5 text-[10px] uppercase tracking-widest text-gold">
+                  {id}{no ? ` · ${no.nome}` : ""}
+                </span>
+              );
+            })}
+          </div>
+        )}
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          Tier disponível: <span className="mono">standard</span>
+          {idDesbl.includes("FINE") ? <> · <span className="mono">fine</span></> : <> · <span className="mono line-through opacity-60">fine (requer FINE)</span></>}
+          {idDesbl.includes("ARTISAN") ? <> · <span className="mono">artisan</span></> : <> · <span className="mono line-through opacity-60">artisan (requer ARTISAN)</span></>}
+        </p>
       </div>
 
       <div className="border-t border-gold/20 pt-3">
@@ -528,20 +551,20 @@ function PainelCapacidadeCOO({ valor, snapshot }: { valor: Record<string, any>; 
           <p className="mt-1 text-xs text-muted-foreground">
             Desligada. Ativa para adicionar capacidade externa (até 50% da capacidade interna) — +18% custo e −15% qualidade nessas unidades.
           </p>
-        ) : totalAlvo === 0 ? (
+        ) : cap.totalAlvo === 0 ? (
           <p className="mt-1 text-xs text-muted-foreground">
-            {Math.round(subEff * 100)}% → +{Math.round(subEff * 100)}% de capacidade sobre a interna (+18% custo, −15% qualidade nessas unidades).
+            {Math.round(cap.subEff * 100)}% → +{Math.round(cap.subEff * 100)}% de capacidade sobre a interna (+18% custo, −15% qualidade nessas unidades).
           </p>
-        ) : subUn > 0 ? (
+        ) : cap.subUn > 0 ? (
           <p className="mt-1 text-sm">
-            A <span className="mono">{Math.round(sub * 100)}%</span>{sub > 0.5 && <span className="text-muted-foreground"> (aplicado {Math.round(subEff*100)}% — teto 50%)</span>} →
-            {" "}+<span className="mono font-semibold">{subUn}</span> un externas
-            <span className="text-muted-foreground"> (interna {capIntUn} un · disponível +{capSubUn} un)</span>
+            A <span className="mono">{Math.round(sub * 100)}%</span>{sub > 0.5 && <span className="text-muted-foreground"> (aplicado {Math.round(cap.subEff*100)}% — teto 50%)</span>} →
+            {" "}+<span className="mono font-semibold">{cap.subUn}</span> un externas
+            <span className="text-muted-foreground"> (interna {cap.capIntUn} un · disponível +{capSubUn} un)</span>
             <span className="text-[11px] text-muted-foreground"> · custo +18%, qualidade −15% nessas unidades</span>
           </p>
         ) : (
           <p className="mt-1 text-xs text-muted-foreground">
-            Disponível mas não utilizada — a produção cabe na capacidade interna ({capIntUn} un ≥ {totalAlvo} un).
+            Disponível mas não utilizada — a produção cabe na capacidade interna ({cap.capIntUn} un ≥ {cap.totalAlvo} un).
           </p>
         )}
       </div>
@@ -577,6 +600,7 @@ function PainelCapacidadeCOO({ valor, snapshot }: { valor: Record<string, any>; 
     </div>
   );
 }
+
 
 /* ============================ Helpers CMO ============================ */
 

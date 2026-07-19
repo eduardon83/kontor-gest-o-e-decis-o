@@ -337,7 +337,9 @@ Deno.serve(async (req) => {
       }
 
       const automacaoMult = idDesbl.has("AUTOMACAO") ? 1.15 : 1;
-      const capLabour = (trabalhadores * 160 + overtime * trabalhadores) * prodMult;
+      // ritmoMult: ferias→0, folga→0.7, normal/horas_extra→1 (overtime adicionado à parte).
+      const ritmoMult = ritmo === "ferias" ? 0 : ritmo === "folga" ? 0.7 : 1;
+      const capLabour = trabalhadores * (160 + overtime) * ritmoMult * prodMult;
       const capMachine = (estado.maquinas + comprarMaquinas) * 450 * prodMult * automacaoMult;
       const labNeed = (Object.keys(PRODUTOS) as Produto[])
         .reduce((s, p) => s + alvo[p] * PRODUTOS[p].mao * TIERS[tiers[p]].mao_mult, 0);

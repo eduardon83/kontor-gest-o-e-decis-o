@@ -20,11 +20,15 @@ export function ChaoFabrica() {
 
   // ── ÚLTIMO TURNO RESOLVIDO ─────────────────────────────────────────
   const turnoResolvido = Number(snap.turno ?? 0);
-  const ritmoReal = String(snap.ritmo ?? "normal");
-  const overtimeReal = ritmoReal === "horas_extra" ? 40 : 0;
-  const tierReal = Object.values(snap.tiers ?? {})[0] as string ?? "standard";
-  const capLabReal = (trabalhadores * 160 + overtimeReal * trabalhadores) * prodMultReal;
-  const capMachReal = maquinas * 450 * prodMultReal * automacao;
+  const ritmoReal = (snap.ritmo ?? "normal") as Ritmo;
+  const tierReal = (Object.values(snap.tiers ?? {})[0] as Tier) ?? "standard";
+  const capReal = capacidadeCOO({
+    trabalhadores, maquinas, prodMult: prodMultReal, tier: tierReal, ritmo: ritmoReal,
+    alvo: {}, subcontratacao: 0, automacao: idDesbl.includes("AUTOMACAO"),
+  });
+  const capLabReal = capReal.capLabour;
+  const capMachReal = capReal.capMachine;
+
   const producaoResumo = Number(snap.decisoes_resumo?.producao_total ?? 0);
 
   // ── TURNO ATUAL — planeado (rascunho ou decisão submetida do COO) ──

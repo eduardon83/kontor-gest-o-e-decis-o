@@ -104,7 +104,7 @@ export function ChaoFabrica() {
                   </div>
                 </div>
                 <div className="mono text-right text-[10px] uppercase text-muted-foreground">
-                  <div>mão {(alv * MAO[p] * MAO_MULT[tierPlan]).toFixed(0)} h</div>
+                  <div>mão {(alv * MAO_H[p] * MAO_MULT[tierPlan]).toFixed(0)} h</div>
                   <div>máq {(alv * MACH_H[p]).toFixed(0)} h</div>
                 </div>
               </li>

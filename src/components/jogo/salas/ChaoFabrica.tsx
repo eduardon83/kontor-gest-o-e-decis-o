@@ -16,7 +16,7 @@ export function ChaoFabrica() {
   const maquinas = Number(snap.maquinas ?? 0);
   const prodMultReal = Number(snap.prodMult ?? 1);
   const idDesbl: string[] = Array.isArray(snap.id?.desbloqueados) ? snap.id.desbloqueados : [];
-  const automacao = idDesbl.includes("AUTOMACAO") ? 1.15 : 1;
+  
 
   // ── ÚLTIMO TURNO RESOLVIDO ─────────────────────────────────────────
   const turnoResolvido = Number(snap.turno ?? 0);

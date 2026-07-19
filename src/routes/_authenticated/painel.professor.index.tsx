@@ -4,7 +4,7 @@ import { PainelShell } from "@/components/painel/PainelShell";
 import { CopiarCodigo } from "@/components/painel/CopiarCodigo";
 import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/_authenticated/painel/professor")({
+export const Route = createFileRoute("/_authenticated/painel/professor/")({
   component: PainelProfessor,
 });
 

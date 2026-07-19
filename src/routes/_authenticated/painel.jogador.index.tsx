@@ -18,7 +18,7 @@ const searchSchema = z.object({
   lugar: z.enum(["CEO", "CFO", "COO", "CMO", "CHRO"]).optional(),
 });
 
-export const Route = createFileRoute("/_authenticated/painel/jogador")({
+export const Route = createFileRoute("/_authenticated/painel/jogador/")({
   validateSearch: (s) => searchSchema.parse(s),
   component: PaginaJogo,
 });

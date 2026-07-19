@@ -5,11 +5,23 @@ import { z } from "zod";
 const LUGARES = ["CEO", "CFO", "COO", "CMO", "CHRO"] as const;
 
 async function assertProfessorOwnsOrAdmin(supabase: any, userId: string, competicao_id: string) {
-  const { data: perfil } = await supabase.from("perfis").select("papel").eq("id", userId).maybeSingle();
+  const { data: perfil } = await supabase
+    .from("perfis")
+    .select("papel, instituicao_id")
+    .eq("id", userId)
+    .maybeSingle();
   if (!perfil) throw new Error("Perfil não encontrado.");
-  if (perfil.papel === "super_admin" || perfil.papel === "admin_escolar") return;
-  const { data: comp } = await supabase.from("competicoes").select("criado_por").eq("id", competicao_id).maybeSingle();
+  if (perfil.papel === "super_admin") return;
+  const { data: comp } = await supabase
+    .from("competicoes")
+    .select("criado_por, instituicao_id")
+    .eq("id", competicao_id)
+    .maybeSingle();
   if (!comp) throw new Error("Competição não encontrada.");
+  if (perfil.papel === "admin_escolar") {
+    if (perfil.instituicao_id && comp.instituicao_id === perfil.instituicao_id) return;
+    throw new Error("Sem autorização: competição fora da sua instituição.");
+  }
   if (comp.criado_por !== userId) throw new Error("Sem autorização para esta competição.");
 }
 

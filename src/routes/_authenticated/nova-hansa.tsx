@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { PainelShell } from "@/components/painel/PainelShell";
+import { CopiarCodigo } from "@/components/painel/CopiarCodigo";
 import { Campo, Input, Select, Numero } from "@/components/nova-hansa/campos";
 import { criarHansa, type NovaHansaInput } from "@/lib/nova-hansa.functions";
 

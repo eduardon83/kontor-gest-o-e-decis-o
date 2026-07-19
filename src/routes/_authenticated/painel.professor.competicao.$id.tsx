@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { PainelShell } from "@/components/painel/PainelShell";
-import { resultadosCompeticao, submissoesRondaAtual, avancarRondaAgora } from "@/lib/competicao.functions";
+import { resultadosCompeticao, submissoesRondaAtual, avancarRondaAgora, regenerarEconomia } from "@/lib/competicao.functions";
 import { MercadoBloco } from "@/components/competicao/MercadoBloco";
 
 

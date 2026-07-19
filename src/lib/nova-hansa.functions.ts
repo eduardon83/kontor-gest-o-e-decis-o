@@ -209,22 +209,31 @@ export const criarHansa = createServerFn({ method: "POST" })
 
     // Fase 5 · chama a Edge Function `gerar_economia` (server-authoritative,
     // service-role) para produzir a economia oculta e os colaboradores a partir da seed.
+    // Falhas aqui têm de ser visíveis: sem economia, o resolver não corre.
+    const url = process.env.SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !serviceKey) {
+      throw new Error("Configuração do servidor em falta: SUPABASE_URL/SERVICE_ROLE_KEY.");
+    }
+    let respGE: Response;
     try {
-      const url = process.env.SUPABASE_URL;
-      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      if (url && serviceKey) {
-        await fetch(`${url}/functions/v1/gerar_economia`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${serviceKey}`,
-            "apikey": serviceKey,
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({ competicao_id: comp.id }),
-        });
-      }
+      respGE = await fetch(`${url}/functions/v1/gerar_economia`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${serviceKey}`,
+          "apikey": serviceKey,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ competicao_id: comp.id }),
+      });
     } catch (e) {
       console.error("[gerar_economia] falha ao invocar", e);
+      throw new Error(`Falha ao invocar gerar_economia: ${(e as Error).message}`);
+    }
+    const bodyGE = await respGE.json().catch(() => ({} as any));
+    if (!respGE.ok || bodyGE?.ok === false) {
+      console.error("[gerar_economia] erro", respGE.status, bodyGE);
+      throw new Error(bodyGE?.error ?? `gerar_economia falhou (${respGE.status}).`);
     }
 
     return {

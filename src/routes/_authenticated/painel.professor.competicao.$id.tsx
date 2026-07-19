@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { PainelShell } from "@/components/painel/PainelShell";
-import { resultadosCompeticao, submissoesRondaAtual, avancarRondaAgora } from "@/lib/competicao.functions";
+import { resultadosCompeticao, submissoesRondaAtual, avancarRondaAgora, regenerarEconomia } from "@/lib/competicao.functions";
 import { MercadoBloco } from "@/components/competicao/MercadoBloco";
 
 
@@ -18,6 +18,7 @@ function Pagina() {
   const resultadosFn = useServerFn(resultadosCompeticao);
   const submissoesFn = useServerFn(submissoesRondaAtual);
   const avancarFn = useServerFn(avancarRondaAgora);
+  const regenerarFn = useServerFn(regenerarEconomia);
 
   const resultados = useQuery({
     queryKey: ["competicao", id, "resultados", "professor"],
@@ -30,10 +31,23 @@ function Pagina() {
   });
 
   const [avanceErro, setAvanceErro] = useState<string | null>(null);
+  const [regenMsg, setRegenMsg] = useState<string | null>(null);
   const avancar = useMutation({
     mutationFn: () => avancarFn({ data: { competicao_id: id } }),
     onSuccess: () => { setAvanceErro(null); router.invalidate(); resultados.refetch(); submissoes.refetch(); },
     onError: (e) => setAvanceErro(e instanceof Error ? e.message : "Falha ao avançar."),
+  });
+  const regenerar = useMutation({
+    mutationFn: () => regenerarFn({ data: { competicao_id: id } }),
+    onSuccess: (r: any) => {
+      setRegenMsg(
+        r?.ja_gerada
+          ? `Economia já existia · ${r.colaboradores} colaboradores.`
+          : `Economia gerada · ${r.colaboradores} colaboradores.`,
+      );
+      router.invalidate();
+    },
+    onError: (e) => setRegenMsg(e instanceof Error ? e.message : "Falha ao gerar economia."),
   });
 
   const dados = resultados.data;
@@ -59,16 +73,29 @@ function Pagina() {
               <p className="mt-1 font-mono text-xs text-slate">Sem ronda aberta.</p>
             )}
           </div>
-          <button
-            onClick={() => avancar.mutate()}
-            disabled={!sub?.ronda || avancar.isPending}
-            className="rounded-md bg-gold px-4 py-2 text-sm font-medium text-navy transition-colors hover:brightness-95 disabled:opacity-50"
-          >
-            {avancar.isPending ? "A resolver…" : "Avançar turno agora"}
-          </button>
+          <div className="flex flex-col items-end gap-2">
+            <button
+              onClick={() => avancar.mutate()}
+              disabled={!sub?.ronda || avancar.isPending}
+              className="rounded-md bg-gold px-4 py-2 text-sm font-medium text-navy transition-colors hover:brightness-95 disabled:opacity-50"
+            >
+              {avancar.isPending ? "A resolver…" : "Avançar turno agora"}
+            </button>
+            <button
+              onClick={() => regenerar.mutate()}
+              disabled={regenerar.isPending}
+              className="rounded-md border border-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-slate hover:bg-muted disabled:opacity-50"
+              title="Gera economia oculta e colaboradores iniciais (idempotente)."
+            >
+              {regenerar.isPending ? "A gerar…" : "Gerar/Regenerar economia"}
+            </button>
+          </div>
         </div>
         {avanceErro && (
           <p className="mt-3 rounded border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">{avanceErro}</p>
+        )}
+        {regenMsg && (
+          <p className="mt-3 rounded border border-border bg-muted/40 p-2 font-mono text-[11px] text-slate">{regenMsg}</p>
         )}
 
         {sub?.equipas && sub.equipas.length > 0 && (

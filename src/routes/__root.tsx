@@ -7,13 +7,28 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
+import { ROTAS_POR_PAPEL, type Papel } from "@/lib/painel";
 
 function NotFoundComponent() {
+  const [destino, setDestino] = useState<string | null>(null);
+  useEffect(() => {
+    (async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) return;
+      const { data: p } = await supabase
+        .from("perfis")
+        .select("papel")
+        .eq("id", u.user.id)
+        .maybeSingle();
+      const papel = (p?.papel as Papel) ?? "jogador";
+      setDestino(ROTAS_POR_PAPEL[papel]);
+    })();
+  }, []);
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
@@ -22,10 +37,18 @@ function NotFoundComponent() {
         <p className="mt-3 text-sm text-muted-foreground">
           A rota que procura não existe ou foi movida.
         </p>
-        <div className="mt-6">
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
+          {destino && (
+            <Link
+              to={destino}
+              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
+            >
+              Ir para o meu painel
+            </Link>
+          )}
           <Link
             to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
+            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
           >
             Voltar ao início
           </Link>

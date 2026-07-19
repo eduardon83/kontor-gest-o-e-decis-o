@@ -4,6 +4,7 @@ import { useNavigate, Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useJogo } from "./JogoContext";
 import { Livre } from "./Livre";
+import { LogoKontor } from "@/components/marca/LogoKontor";
 import { LUGARES, type Acesso } from "@/lib/jogo/tipos";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -84,7 +85,10 @@ export function BarraTopo() {
     <header className="surface-navy border-b" style={{ borderColor: "color-mix(in oklab, var(--gold) 30%, transparent)" }}>
       <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-4 px-6 py-3">
         <Link to="/painel" className="flex items-center gap-3" title="Voltar ao painel">
-          <Livre inicial={inicial} size={40} />
+          <LogoKontor size={28} cor="gold" />
+          <span className="font-serif text-base text-paper" style={{ fontWeight: 800 }}>Kontor</span>
+          <span aria-hidden className="mx-1 h-6 w-px" style={{ background: "color-mix(in oklab, var(--gold) 30%, transparent)" }} />
+          <Livre inicial={inicial} size={36} />
           <div className="leading-tight">
             <div className="font-serif text-lg text-paper">{nomeEmpresa}</div>
             <div className="mono text-[10px] uppercase tracking-[0.24em] text-gold">Kontor · painel</div>

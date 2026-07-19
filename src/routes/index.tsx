@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { LogoKontor } from "@/components/marca/LogoKontor";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -18,9 +19,10 @@ function Landing() {
           }}
         />
         <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-          <Link to="/" className="flex items-center gap-2">
-            <span className="font-serif text-2xl tracking-tight text-paper">Kontor</span>
-            <span className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-gold sm:inline">
+          <Link to="/" className="flex items-center gap-3">
+            <LogoKontor size={36} cor="gold" />
+            <span className="font-serif tracking-tight text-paper" style={{ fontWeight: 800, fontSize: "1.5rem" }}>Kontor</span>
+            <span className="hidden font-mono text-[10px] uppercase tracking-[0.28em] text-gold sm:inline">
               simulador de gestão
             </span>
           </Link>
@@ -35,6 +37,9 @@ function Landing() {
         </header>
 
         <div className="relative z-10 mx-auto max-w-6xl px-6 pt-16 pb-28 md:pt-24 md:pb-36">
+          <div className="mb-8 hidden md:block">
+            <LogoKontor size={128} cor="gold" />
+          </div>
           <p className="font-mono text-xs uppercase tracking-[0.28em] text-gold">
             Ensino superior · Gestão · Simulação
           </p>

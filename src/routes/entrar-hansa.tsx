@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { entrarPorCodigo } from "@/lib/jogo.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { LogoKontor } from "@/components/marca/LogoKontor";
 
 export const Route = createFileRoute("/entrar-hansa")({
   component: EntrarHansa,
@@ -51,7 +52,10 @@ function EntrarHansa() {
   return (
     <div className="min-h-screen surface-deep">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-        <Link to="/" className="font-serif text-2xl text-paper">Kontor</Link>
+        <Link to="/" className="flex items-center gap-3">
+          <LogoKontor size={32} cor="gold" />
+          <span className="font-serif text-2xl text-paper" style={{ fontWeight: 800 }}>Kontor</span>
+        </Link>
         <Link to="/auth" className="text-sm text-paper/70 hover:text-paper">Sou docente</Link>
       </header>
 

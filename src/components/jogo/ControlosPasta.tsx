@@ -365,8 +365,6 @@ function SeguroBox({ ativo, onChange, disabled }: { ativo: boolean; onChange: (v
 
 /* ============================ Helpers COO ============================ */
 
-import { capacidadeCOO, tierEfetivo, RITMO_MULT, type Tier, type Ritmo } from "@/lib/jogo/capacidade";
-import { ID_NOS } from "@/lib/jogo/id-arvore";
 
 
 function OpcoesDescr({

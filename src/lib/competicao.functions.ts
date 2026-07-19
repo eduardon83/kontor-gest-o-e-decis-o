@@ -129,6 +129,31 @@ export const submissoesRondaAtual = createServerFn({ method: "POST" })
     };
   });
 
+// ─── Garantir economia (idempotente) ───────────────────────────────────────
+async function invocarGerarEconomia(competicao_id: string): Promise<{ ok: boolean; body: any; status: number }> {
+  const url = process.env.SUPABASE_URL!;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const resp = await fetch(`${url}/functions/v1/gerar_economia`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${serviceKey}`,
+      "apikey": serviceKey,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ competicao_id }),
+  });
+  const body = await resp.json().catch(() => ({}));
+  return { ok: resp.ok && body?.ok !== false, body, status: resp.status };
+}
+
+async function garantirEconomia(supabaseAdmin: any, competicao_id: string): Promise<void> {
+  const { data: existe } = await supabaseAdmin
+    .from("economia_seed").select("competicao_id").eq("competicao_id", competicao_id).maybeSingle();
+  if (existe) return;
+  const r = await invocarGerarEconomia(competicao_id);
+  if (!r.ok) throw new Error(r.body?.error ?? `gerar_economia falhou (${r.status}).`);
+}
+
 // ─── Avançar turno agora (invoca Edge Function) ────────────────────────────
 export const avancarRondaAgora = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -136,6 +161,9 @@ export const avancarRondaAgora = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertProfessorOwnsOrAdmin(supabase, userId, data.competicao_id);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await garantirEconomia(supabaseAdmin, data.competicao_id);
 
     const { data: ronda } = await supabase.from("rondas")
       .select("id, indice, estado")
@@ -160,3 +188,40 @@ export const avancarRondaAgora = createServerFn({ method: "POST" })
     }
     return { ok: true, ronda_id: ronda.id, indice: ronda.indice, resposta: body };
   });
+
+// ─── Regenerar / diagnosticar economia (botão do professor) ────────────────
+export const regenerarEconomia = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) => z.object({ competicao_id: z.string().uuid() }).parse(raw))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertProfessorOwnsOrAdmin(supabase, userId, data.competicao_id);
+    const r = await invocarGerarEconomia(data.competicao_id);
+    if (!r.ok) throw new Error(r.body?.error ?? `gerar_economia falhou (${r.status}).`);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: seed } = await supabaseAdmin
+      .from("economia_seed").select("competicao_id").eq("competicao_id", data.competicao_id).maybeSingle();
+    const { data: mercados } = await supabaseAdmin
+      .from("mercados").select("id").eq("competicao_id", data.competicao_id);
+    const mIds = ((mercados ?? []) as any[]).map((m) => m.id);
+    let nCol = 0;
+    if (mIds.length) {
+      const { data: eqs } = await supabaseAdmin
+        .from("equipas").select("id").in("mercado_id", mIds);
+      const eqIds = ((eqs ?? []) as any[]).map((e) => e.id);
+      if (eqIds.length) {
+        const { count } = await supabaseAdmin
+          .from("colaboradores").select("*", { count: "exact", head: true }).in("equipa_id", eqIds);
+        nCol = count ?? 0;
+      }
+    }
+    return {
+      ok: true,
+      ja_gerada: r.body?.ja_gerada === true,
+      seed_presente: !!seed,
+      colaboradores: nCol,
+      resposta: r.body,
+    };
+  });
+

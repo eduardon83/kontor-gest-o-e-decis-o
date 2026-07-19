@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { PainelShell } from "@/components/painel/PainelShell";
 import { Button } from "@/components/ui/button";
 import { ConvitesPapel } from "@/components/painel/ConvitesPapel";
+import { PedidosDocente } from "@/components/painel/PedidosDocente";
 import {
   listarUtilizadoresInstituicao,
   alterarPapelUtilizador,

@@ -21,6 +21,7 @@ import {
 import { TemaProvider, useTema } from "@/components/tema/TemaProvider";
 import type { Tema, TemaSlots, TemaTokens } from "@/lib/tema/tipos";
 import { ConvitesPapel } from "@/components/painel/ConvitesPapel";
+import { PedidosDocente } from "@/components/painel/PedidosDocente";
 
 export const Route = createFileRoute("/_authenticated/painel/super-admin")({
   component: Pagina,

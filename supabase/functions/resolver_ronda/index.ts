@@ -582,8 +582,7 @@ Deno.serve(async (req) => {
         + b.empréstimo_novo - b.amortizar
         + equity - b.dividendos;
 
-      const dividaNova = b.estado.divida + b.empréstimo_novo - b.amortizar;
-      const ativosNovo = b.estado.ativos + comprarMaquinas * 0.5;
+      let dividaNova = b.estado.divida + b.empréstimo_novo - b.amortizar;
       const marcaNovo = clamp(b.estado.marca + Math.min(8, b.marketing / 3000) - 1, 0, 100);
       const prejuizosNovo = pre < 0
         ? b.estado.prejuizos_acum + Math.abs(pre)

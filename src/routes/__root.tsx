@@ -7,52 +7,25 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { LogoKontor } from "@/components/marca/LogoKontor";
 import { supabase } from "@/integrations/supabase/client";
-import { ROTAS_POR_PAPEL, type Papel } from "@/lib/painel";
 
 function NotFoundComponent() {
-  const [destino, setDestino] = useState<string | null>(null);
-  useEffect(() => {
-    (async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) return;
-      const { data: p } = await supabase
-        .from("perfis")
-        .select("papel")
-        .eq("id", u.user.id)
-        .maybeSingle();
-      const papel = (p?.papel as Papel) ?? "jogador";
-      setDestino(ROTAS_POR_PAPEL[papel]);
-    })();
-  }, []);
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <div className="mb-6 flex justify-center">
-          <LogoKontor size={64} cor="navy" />
-        </div>
         <p className="font-mono text-xs tracking-widest text-muted-foreground">KONTOR · 404</p>
         <h1 className="mt-4 font-serif text-5xl text-foreground">Página não encontrada</h1>
         <p className="mt-3 text-sm text-muted-foreground">
           A rota que procura não existe ou foi movida.
         </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          {destino && (
-            <a
-              href={destino}
-              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
-            >
-              Ir para o meu painel
-            </a>
-          )}
+        <div className="mt-6">
           <Link
             to="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
           >
             Voltar ao início
           </Link>
@@ -103,31 +76,31 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { name: "theme-color", content: "#0E2740" },
-      { title: "Kontor — Simulador de gestão" },
+      { title: "Kontor - Simulação empresarial gamificada" },
       {
         name: "description",
-        content: "Simulador de gestão por equipas para o ensino superior.",
+        content:
+          "Kontor é um simulador de gestão por equipas para o ensino superior. Cada aluno assume uma pasta executiva e decide, semana após semana, num mercado vivo e único a cada jogo.",
       },
-      { property: "og:title", content: "Kontor — Simulador de gestão" },
+      { property: "og:title", content: "Kontor - Simulação empresarial gamificada" },
       {
         property: "og:description",
-        content: "Simulador de gestão por equipas para o ensino superior.",
+        content: "Kontor é um simulador de gestão por equipas para o ensino superior. Cada aluno assume uma pasta executiva e decide, semana após semana, num mercado vivo e único a cada jogo.",
       },
       { property: "og:type", content: "website" },
-      { property: "og:image", content: "https://kontor.kendirstudios.pt/og-image.png" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:image", content: "https://kontor.kendirstudios.pt/og-image.png" },
+      { name: "twitter:title", content: "Kontor - Simulação empresarial gamificada" },
+      { name: "twitter:description", content: "Kontor é um simulador de gestão por equipas para o ensino superior. Cada aluno assume uma pasta executiva e decide, semana após semana, num mercado vivo e único a cada jogo." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/fdbe3d88-b518-467b-8e08-3e55bc26a1c9/id-preview-e27aa9f5--dfb6877c-6fa2-4c3f-a889-e5d448b71346.lovable.app-1784465101549.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/fdbe3d88-b518-467b-8e08-3e55bc26a1c9/id-preview-e27aa9f5--dfb6877c-6fa2-4c3f-a889-e5d448b71346.lovable.app-1784465101549.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
-      { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap",
       },
     ],
   }),

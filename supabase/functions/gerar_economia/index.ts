@@ -215,7 +215,7 @@ Deno.serve(async (req) => {
               turno: 0,
               caixa: capitalInicial,
               divida: 0,
-              ativos: MAQUINAS_INICIAIS * 30000,
+              ativos: MAQUINAS_INICIAIS,
               marca: 40,
               moral: 65,
               stress_org: 30,

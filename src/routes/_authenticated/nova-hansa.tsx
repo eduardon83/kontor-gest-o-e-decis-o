@@ -336,8 +336,8 @@ function NovaHansaPage() {
             <section className="mt-8 space-y-6">
               <h2 className="font-serif text-2xl">Abrir Hansa</h2>
               <p className="text-sm text-muted-foreground">
-                Ao abrir, gera-se um código único, criam-se mercados, equipas e a ronda inicial (aberta). A geração
-                da economia oculta a partir da seed acontecerá numa fase seguinte via função de servidor.
+                Ao abrir, gera-se um código único, criam-se mercados, equipas e a ronda inicial (aberta),
+                e o servidor gera imediatamente a economia oculta e os colaboradores a partir da seed.
               </p>
               <Resumo
                 nome={nome}

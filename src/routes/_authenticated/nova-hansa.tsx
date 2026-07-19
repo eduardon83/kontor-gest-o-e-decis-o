@@ -481,9 +481,12 @@ function ResultadoPainel({
       <p className="mt-3 text-sm text-muted-foreground">
         Partilhe o código com os alunos. Eles podem entrar em "Entrar com código de Hansa".
       </p>
-      <div className="mt-6 rounded-md border border-navy/20 bg-navy p-6 text-paper">
-        <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-gold">Código</p>
-        <p className="mt-1 font-mono text-3xl text-paper">{resultado.codigo}</p>
+      <div className="mt-6 flex items-center justify-between gap-4 rounded-md border border-navy/20 bg-navy p-6 text-paper">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-gold">Código</p>
+          <p className="mt-1 font-mono text-3xl text-paper">{resultado.codigo}</p>
+        </div>
+        <CopiarCodigo codigo={resultado.codigo} variante="escuro" />
       </div>
       {resultado.emails_pendentes.length > 0 && (
         <div className="mt-6 rounded-md border border-border bg-background p-4">

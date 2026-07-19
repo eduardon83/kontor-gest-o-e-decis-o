@@ -730,9 +730,12 @@ Deno.serve(async (req) => {
       const ativosProdutivosValor = maquinasFim * 30000;
       const ativoTotal = Math.max(0, caixaNovaFinal) + ativosProdutivosValor;
       const capitalProprio = ativoTotal - dividaNova;
-      const valorEmpresa = Math.max(0, caixaNovaFinal) + ativosNovo * 30000 + marcaNovo * 1500 - dividaNova + Math.max(0, net) * 2;
+      // Valor da empresa: caixa + ativos produtivos + valor de marca − dívida
+      // + prémio pelo resultado líquido do turno.
+      const valorEmpresa = Math.max(0, caixaNovaFinal) + ativosProdutivosValor
+        + marcaNovo * 1500 - dividaNova + Math.max(0, net) * 2;
       const capex = comprarMaquinas * 60000;
-      const caixaReconstruida = b.estado.caixa + net - capex + b.empréstimo_novo - b.amortizar - b.dividendos - indemnizacoes;
+      const caixaReconstruida = b.estado.caixa + net - capex + b.empréstimo_novo - b.amortizar - b.dividendos - indemnizacoes + creditoAutomatico;
       const custosTotais = prodCost + fixed + interest;
 
       const financeiro = {

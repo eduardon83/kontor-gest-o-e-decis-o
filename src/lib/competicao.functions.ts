@@ -250,4 +250,23 @@ export const eliminarCompeticao = createServerFn({ method: "POST" })
     return { ok: true, nome: comp.nome };
   });
 
+// ─── Arquivar/reabrir competição (não destrutivo) ─────────────────────────
+export const arquivarCompeticao = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) => z.object({
+    competicao_id: z.string().uuid(),
+    arquivar: z.boolean().default(true),
+  }).parse(raw))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertProfessorOwnsOrAdmin(supabase, userId, data.competicao_id);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const novoEstado = data.arquivar ? "arquivada" : "ativa";
+    const { error } = await supabaseAdmin
+      .from("competicoes").update({ estado: novoEstado }).eq("id", data.competicao_id);
+    if (error) throw new Error(error.message);
+    return { ok: true, estado: novoEstado };
+  });
+
+
 

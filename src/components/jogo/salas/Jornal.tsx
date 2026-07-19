@@ -19,10 +19,34 @@ export function Jornal() {
   const faseEcon = (snapshotAtual as any)?.fase_economica ?? (ultimoResolvido?.snapshot as any)?.macro?.fase ?? null;
 
   // Manchetes: em modo real são derivadas da economia macro e do próprio desempenho.
+  const macroAtual = (snapshotAtual as any)?.macro as
+    | { juro: number; inflacao: number; crescimento: number; confianca: number }
+    | undefined;
+  const macroAnterior = (ultimoResolvido?.snapshot as any)?.macro as
+    | { juro: number; inflacao: number; crescimento: number; confianca: number }
+    | undefined;
+  const notas = ((snapshotAtual as any)?.notas ?? []) as { acao: string; payload?: Record<string, unknown> }[];
+
   const manchetesReais = (() => {
     if (!emReal) return null;
     const arr: { tag: string; titulo: string }[] = [];
     if (faseEcon) arr.push({ tag: "Economia", titulo: `Fase macroeconómica: ${faseEcon}` });
+    if (macroAtual) {
+      const dJuro = macroAnterior ? macroAtual.juro - macroAnterior.juro : 0;
+      if (Math.abs(dJuro) >= 0.25) {
+        arr.push({
+          tag: "Política monetária",
+          titulo: `Juro base ${dJuro > 0 ? "sobe" : "desce"} para ${macroAtual.juro.toFixed(2)}%`,
+        });
+      } else {
+        arr.push({ tag: "Política monetária", titulo: `Juro base estabiliza em ${macroAtual.juro.toFixed(2)}%` });
+      }
+      arr.push({ tag: "Preços", titulo: `Inflação a ${macroAtual.inflacao.toFixed(1)}%` });
+      arr.push({
+        tag: "Ciclo",
+        titulo: `Crescimento ${(macroAtual.crescimento * 100 - 100).toFixed(1)}% · confiança ${Math.round(macroAtual.confianca)}`,
+      });
+    }
     if (fin?.pnl?.resultado_liquido != null) {
       const rl = Number(fin.pnl.resultado_liquido);
       arr.push({

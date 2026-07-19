@@ -4,7 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { PainelShell } from "@/components/painel/PainelShell";
 import {
-  resultadosCompeticao, submissoesRondaAtual, avancarRondaAgora, regenerarEconomia, eliminarCompeticao,
+  resultadosCompeticao, submissoesRondaAtual, avancarRondaAgora,
+  regenerarEconomia, eliminarCompeticao, arquivarCompeticao,
 } from "@/lib/competicao.functions";
 import { MercadoBloco } from "@/components/competicao/MercadoBloco";
 import {

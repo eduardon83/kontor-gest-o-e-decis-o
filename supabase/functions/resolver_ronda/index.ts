@@ -841,6 +841,8 @@ Deno.serve(async (req) => {
           marketing: b.marketing,
           producao_total: b.producao.cadeira + b.producao.mesa + b.producao.armario,
         },
+        procura: procuraUnitPorEquipa.get(b.equipa_id) ?? 0,
+        quota: quotaUnitPorEquipa.get(b.equipa_id) ?? 0,
         macro, notas: b.auditoria,
       };
       snapshotsInsert.push({ equipa_id: b.equipa_id, ronda_id: ronda.id, snapshot });

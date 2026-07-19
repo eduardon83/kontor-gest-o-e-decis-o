@@ -798,7 +798,7 @@ Deno.serve(async (req) => {
       };
 
       const snapshot: EstadoBase & Record<string, unknown> = {
-        caixa: caixaNovaFinal, ativos: ativosNovo, marca: marcaNovo, divida: dividaNova,
+        caixa: caixaNovaFinal, ativos: maquinasFim, marca: marcaNovo, divida: dividaNova,
         moral: Mn, stress_org: Sn, ambicao_org: An,
         maquinas: maquinasFim,
         forca_vendas: b.forca_vendas,

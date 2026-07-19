@@ -49,11 +49,6 @@ function Pagina() {
     },
     onError: (e) => setRegenMsg(e instanceof Error ? e.message : "Falha ao gerar economia."),
   });
-  const avancar = useMutation({
-    mutationFn: () => avancarFn({ data: { competicao_id: id } }),
-    onSuccess: () => { setAvanceErro(null); router.invalidate(); resultados.refetch(); submissoes.refetch(); },
-    onError: (e) => setAvanceErro(e instanceof Error ? e.message : "Falha ao avançar."),
-  });
 
   const dados = resultados.data;
   const sub = submissoes.data;

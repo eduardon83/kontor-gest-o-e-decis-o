@@ -210,6 +210,44 @@ export type Database = {
           },
         ]
       }
+      convites_papel: {
+        Row: {
+          criado_em: string
+          criado_por: string | null
+          email: string
+          instituicao_id: string | null
+          papel: Database["public"]["Enums"]["papel_utilizador"]
+          usado_em: string | null
+          usado_por: string | null
+        }
+        Insert: {
+          criado_em?: string
+          criado_por?: string | null
+          email: string
+          instituicao_id?: string | null
+          papel: Database["public"]["Enums"]["papel_utilizador"]
+          usado_em?: string | null
+          usado_por?: string | null
+        }
+        Update: {
+          criado_em?: string
+          criado_por?: string | null
+          email?: string
+          instituicao_id?: string | null
+          papel?: Database["public"]["Enums"]["papel_utilizador"]
+          usado_em?: string | null
+          usado_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "convites_papel_instituicao_id_fkey"
+            columns: ["instituicao_id"]
+            isOneToOne: false
+            referencedRelation: "instituicoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       decisoes: {
         Row: {
           atualizado_em: string

@@ -144,9 +144,33 @@ export function Jornal() {
         <div className="rounded-sm border bg-card p-4">
           <h3 className="font-serif text-lg">Decisões desta ronda</h3>
           {emReal ? (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Vê o registo detalhado por lugar no gabinete — o resumo aqui é anedótico.
-            </p>
+            notas.length === 0 ? (
+              <p className="mt-3 text-sm text-muted-foreground">
+                Sem eventos de decisão registados neste turno.
+              </p>
+            ) : (
+              <ul className="mt-3 space-y-2 text-sm">
+                {notas.slice(0, 8).map((n, i) => {
+                  const estado = n.acao.includes("ignorad") || n.acao.includes("invalid") || n.acao.includes("anulad")
+                    ? "anulado"
+                    : n.acao.includes("clampad") || n.acao.includes("reduzid") || n.acao.includes("subid") || n.acao.includes("limit") || n.acao.includes("status_quo") || n.acao.includes("credito_automatica")
+                      ? "ajustado"
+                      : "aplicado";
+                  return (
+                    <li key={i} className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                          {n.acao.replace(/_/g, " ")}
+                        </span>
+                      </div>
+                      <span className={`mono shrink-0 text-[10px] uppercase tracking-widest ${CORES_ESTADO[estado as keyof typeof CORES_ESTADO]}`}>
+                        {estado}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )
           ) : (
             <ul className="mt-3 space-y-2 text-sm">
               {decisoesReais.map((d, i) => (
@@ -163,6 +187,7 @@ export function Jornal() {
             </ul>
           )}
         </div>
+
 
         <div className="rounded-sm border bg-card p-4">
           <h3 className="font-serif text-lg">Concorrência (valor)</h3>

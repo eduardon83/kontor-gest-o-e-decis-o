@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { entrarPorCodigo } from "@/lib/jogo.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { LogoKontor } from "@/components/marca/LogoKontor";
 
 export const Route = createFileRoute("/entrar-hansa")({
   component: EntrarHansa,

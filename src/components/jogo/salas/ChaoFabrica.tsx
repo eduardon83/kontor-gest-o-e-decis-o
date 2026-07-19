@@ -1,11 +1,10 @@
 import { Cog, HardHat, ShieldCheck, ClipboardList } from "lucide-react";
 import { useJogo } from "../JogoContext";
+import { capacidadeCOO, MAO_MULT, MAO_H, MACH_H, tierEfetivo, type Tier, type Ritmo } from "@/lib/jogo/capacidade";
 
-const MAO_MULT: Record<string, number> = { standard: 1.0, fine: 1.58, artisan: 2.1 };
-const MAO: Record<string, number> = { cadeira: 0.6, mesa: 1.4, armario: 2.2 };
-const MACH_H: Record<string, number> = { cadeira: 1, mesa: 2.5, armario: 4 };
 const PRODS = ["cadeira", "mesa", "armario"] as const;
 const NOMES: Record<string, string> = { cadeira: "Cadeira", mesa: "Mesa", armario: "Armário" };
+
 
 export function ChaoFabrica() {
   const { snapshotAtual, rascunho, decisoes, ronda_indice } = useJogo();

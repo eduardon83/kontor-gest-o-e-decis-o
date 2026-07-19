@@ -71,6 +71,11 @@ function Pagina() {
     },
     onError: (e) => setEliminarErro(e instanceof Error ? e.message : "Falha ao eliminar."),
   });
+  const arquivar = useMutation({
+    mutationFn: (arquivarBool: boolean) =>
+      arquivarFn({ data: { competicao_id: id, arquivar: arquivarBool } }),
+    onSuccess: () => { router.invalidate(); resultados.refetch(); },
+  });
 
   const dados = resultados.data;
   const sub = submissoes.data;

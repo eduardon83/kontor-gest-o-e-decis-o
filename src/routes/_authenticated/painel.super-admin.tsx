@@ -67,7 +67,12 @@ function AbaConvites() {
   useEffect(() => {
     (async () => { try { setInsts((await listar()) as Instituicao[]); } catch {} })();
   }, []);
-  return <ConvitesPapel papelDoUtilizador="super_admin" instituicoes={insts.map((i) => ({ id: i.id, nome: i.nome }))} />;
+  return (
+    <div className="space-y-6">
+      <PedidosDocente />
+      <ConvitesPapel papelDoUtilizador="super_admin" instituicoes={insts.map((i) => ({ id: i.id, nome: i.nome }))} />
+    </div>
+  );
 }
 
 function AbaInstituicoes() {

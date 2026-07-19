@@ -29,6 +29,7 @@ function Pagina() {
   const avancarFn = useServerFn(avancarRondaAgora);
   const regenerarFn = useServerFn(regenerarEconomia);
   const eliminarFn = useServerFn(eliminarCompeticao);
+  const arquivarFn = useServerFn(arquivarCompeticao);
 
   const resultados = useQuery({
     queryKey: ["competicao", id, "resultados", "professor"],

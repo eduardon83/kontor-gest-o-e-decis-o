@@ -39,12 +39,12 @@ function NotFoundComponent() {
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           {destino && (
-            <Link
-              to={destino}
+            <a
+              href={destino}
               className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
             >
               Ir para o meu painel
-            </Link>
+            </a>
           )}
           <Link
             to="/"

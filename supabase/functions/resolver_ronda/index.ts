@@ -321,7 +321,21 @@ Deno.serve(async (req) => {
         armario: Math.max(0, Number(producaoDec.armario ?? 0)),
       };
 
-      // Capacidade — AUTOMACAO aplica ×1.15 ao capMachine.
+      // Fallback status quo: se COO não submeteu producao (todos zero e sem linhas
+      // de saída), aplica um alvo proporcional à procura base dividida pelas
+      // equipas do mercado. Evita que uma equipa que só ajusta preços fique com
+      // receita zero por omissão. Regista em auditoria.
+      const somaAlvo = alvo.cadeira + alvo.mesa + alvo.armario;
+      const linhasSaidaSet = new Set(linhasSaida);
+      if (somaAlvo === 0) {
+        const nEq = Math.max(1, equipasPorMercado.get(eq.mercado_id) ?? 1);
+        for (const p of Object.keys(PRODUTOS) as Produto[]) {
+          if (linhasSaidaSet.has(p)) continue;
+          alvo[p] = Math.max(1, Math.floor(PRODUTOS[p].procura_base / nEq));
+        }
+        auditoria.push({ acao: "producao_status_quo_aplicada", payload: { alvo: { ...alvo }, motivo: "COO_sem_producao" } });
+      }
+
       const automacaoMult = idDesbl.has("AUTOMACAO") ? 1.15 : 1;
       const capLabour = (trabalhadores * 160 + overtime * trabalhadores) * prodMult;
       const capMachine = (estado.maquinas + comprarMaquinas) * 450 * prodMult * automacaoMult;

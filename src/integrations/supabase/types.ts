@@ -682,16 +682,25 @@ export type Database = {
     }
     Functions: {
       competicao_da_equipa: { Args: { _equipa: string }; Returns: string }
+      competicao_do_mercado: { Args: { _mercado: string }; Returns: string }
       e_membro_equipa: { Args: { _equipa: string }; Returns: boolean }
+      e_super_admin: { Args: never; Returns: boolean }
       instituicao_da_equipa: { Args: { _equipa: string }; Returns: string }
       meu_lugar_na_equipa: { Args: { _equipa: string }; Returns: string }
       minha_instituicao: { Args: never; Returns: string }
+      pode_gerir_competicao: { Args: { _competicao: string }; Returns: boolean }
       professor_da_competicao: {
         Args: { _competicao: string }
         Returns: boolean
       }
       reclamar_convites_por_email: { Args: never; Returns: number }
       ronda_esta_aberta: { Args: { _ronda: string }; Returns: boolean }
+      sou_membro_da_competicao: {
+        Args: { _competicao: string }
+        Returns: boolean
+      }
+      sou_membro_da_equipa: { Args: { _equipa: string }; Returns: boolean }
+      sou_membro_do_mercado: { Args: { _mercado: string }; Returns: boolean }
       tem_papel: {
         Args: { _papel: Database["public"]["Enums"]["papel_utilizador"] }
         Returns: boolean

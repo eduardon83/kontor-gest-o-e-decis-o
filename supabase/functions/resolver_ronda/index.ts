@@ -807,9 +807,22 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (snapshotsInsert.length) await sb.from("estado_empresa").insert(snapshotsInsert);
-    if (eventosInsert.length) await sb.from("eventos").insert(eventosInsert);
-    if (resultadosInsert.length) await sb.from("resultados").insert(resultadosInsert);
+    if (snapshotsInsert.length) {
+      const { error: eSnap } = await sb
+        .from("estado_empresa")
+        .upsert(snapshotsInsert, { onConflict: "equipa_id,ronda_id" });
+      if (eSnap) throw new Error(`estado_empresa: ${eSnap.message}`);
+    }
+    if (eventosInsert.length) {
+      const { error: eEv } = await sb.from("eventos").insert(eventosInsert);
+      if (eEv) throw new Error(`eventos: ${eEv.message}`);
+    }
+    if (resultadosInsert.length) {
+      const { error: eRes } = await sb
+        .from("resultados")
+        .upsert(resultadosInsert, { onConflict: "ronda_id,equipa_id" });
+      if (eRes) throw new Error(`resultados: ${eRes.message}`);
+    }
 
     // Aplicar alterações a colaboradores (despedimentos, promoções, novos).
     for (const u of colabsUpdatesGlobal) {

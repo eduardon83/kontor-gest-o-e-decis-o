@@ -298,19 +298,21 @@ export function JogoProvider({
         .eq("user_id", (await supabase.auth.getUser()).data.user?.id ?? "")
         .maybeSingle();
 
-      // Snapshots
+      // Snapshots — ordena pelo índice da ronda (não por criado_em, para lidar
+      // com upserts pós-resolução que mantêm o timestamp da seed inicial).
       const { data: estadoLinhas } = await supabase
         .from("estado_empresa")
         .select("ronda_id, snapshot, rondas(indice)")
-        .eq("equipa_id", equipaId)
-        .order("criado_em", { ascending: true });
+        .eq("equipa_id", equipaId);
 
       const snapshots: SnapshotRegisto[] =
-        (estadoLinhas ?? []).map((r: any) => ({
-          ronda_id: r.ronda_id,
-          ronda_indice: r.rondas?.indice ?? 0,
-          snapshot: (r.snapshot ?? {}) as Snapshot,
-        })) ?? [];
+        ((estadoLinhas ?? []) as any[])
+          .map((r) => ({
+            ronda_id: r.ronda_id as string,
+            ronda_indice: (r.rondas?.indice ?? 0) as number,
+            snapshot: (r.snapshot ?? {}) as Snapshot,
+          }))
+          .sort((a, b) => a.ronda_indice - b.ronda_indice);
       const snapshotAtual = snapshots.length ? snapshots[snapshots.length - 1].snapshot : null;
 
       // Colaboradores

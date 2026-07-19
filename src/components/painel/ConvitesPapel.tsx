@@ -5,6 +5,10 @@ import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { criarConvite, listarConvites, revogarConvite } from "@/lib/convites.functions";
 
 type Papel = "jogador" | "professor" | "admin_escolar" | "super_admin";
@@ -39,6 +43,7 @@ export function ConvitesPapel({
   const [instituicaoId, setInstituicaoId] = useState<string>("");
   const [lista, setLista] = useState<Convite[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
+  const [revogarAlvo, setRevogarAlvo] = useState<string | null>(null);
 
   async function carregar() {
     try {
@@ -79,7 +84,6 @@ export function ConvitesPapel({
   }
 
   async function apagar(emailAlvo: string) {
-    if (!confirm(`Revogar convite para ${emailAlvo}?`)) return;
     try {
       await revogar({ data: { email: emailAlvo } });
       carregar();
@@ -185,7 +189,7 @@ export function ConvitesPapel({
                   {new Date(c.criado_em).toLocaleDateString()}
                 </td>
                 <td className="p-3 text-right">
-                  <Button size="sm" variant="ghost" onClick={() => apagar(c.email)}>
+                  <Button size="sm" variant="ghost" onClick={() => setRevogarAlvo(c.email)}>
                     Revogar
                   </Button>
                 </td>
@@ -201,6 +205,30 @@ export function ConvitesPapel({
           </tbody>
         </table>
       </div>
+
+      <AlertDialog open={!!revogarAlvo} onOpenChange={(v) => !v && setRevogarAlvo(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revogar convite?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O convite para <strong>{revogarAlvo}</strong> deixa de estar disponível. Se a pessoa ainda não
+              se registou, terá de ser convidada novamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                const alvo = revogarAlvo;
+                setRevogarAlvo(null);
+                if (alvo) await apagar(alvo);
+              }}
+            >
+              Revogar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

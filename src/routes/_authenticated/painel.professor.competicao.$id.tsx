@@ -1,10 +1,17 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { PainelShell } from "@/components/painel/PainelShell";
-import { resultadosCompeticao, submissoesRondaAtual, avancarRondaAgora, regenerarEconomia } from "@/lib/competicao.functions";
+import {
+  resultadosCompeticao, submissoesRondaAtual, avancarRondaAgora, regenerarEconomia, eliminarCompeticao,
+} from "@/lib/competicao.functions";
 import { MercadoBloco } from "@/components/competicao/MercadoBloco";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
 
 
 export const Route = createFileRoute("/_authenticated/painel/professor/competicao/$id")({
@@ -14,11 +21,13 @@ export const Route = createFileRoute("/_authenticated/painel/professor/competica
 function Pagina() {
   const { id } = Route.useParams();
   const router = useRouter();
+  const navigate = useNavigate();
 
   const resultadosFn = useServerFn(resultadosCompeticao);
   const submissoesFn = useServerFn(submissoesRondaAtual);
   const avancarFn = useServerFn(avancarRondaAgora);
   const regenerarFn = useServerFn(regenerarEconomia);
+  const eliminarFn = useServerFn(eliminarCompeticao);
 
   const resultados = useQuery({
     queryKey: ["competicao", id, "resultados", "professor"],
@@ -32,6 +41,9 @@ function Pagina() {
 
   const [avanceErro, setAvanceErro] = useState<string | null>(null);
   const [regenMsg, setRegenMsg] = useState<string | null>(null);
+  const [confirmarEliminar, setConfirmarEliminar] = useState(false);
+  const [nomeConfirm, setNomeConfirm] = useState("");
+  const [eliminarErro, setEliminarErro] = useState<string | null>(null);
   const avancar = useMutation({
     mutationFn: () => avancarFn({ data: { competicao_id: id } }),
     onSuccess: () => { setAvanceErro(null); router.invalidate(); resultados.refetch(); submissoes.refetch(); },
@@ -48,6 +60,14 @@ function Pagina() {
       router.invalidate();
     },
     onError: (e) => setRegenMsg(e instanceof Error ? e.message : "Falha ao gerar economia."),
+  });
+  const eliminar = useMutation({
+    mutationFn: () => eliminarFn({ data: { competicao_id: id, confirmar_nome: nomeConfirm } }),
+    onSuccess: () => {
+      setConfirmarEliminar(false);
+      navigate({ to: "/painel/professor" });
+    },
+    onError: (e) => setEliminarErro(e instanceof Error ? e.message : "Falha ao eliminar."),
   });
 
   const dados = resultados.data;
@@ -150,6 +170,54 @@ function Pagina() {
       {dados && dados.mercados.map((mercado: any) => (
         <MercadoBloco key={mercado.id} mercado={mercado} dados={dados} visao="professor" />
       ))}
+
+      {/* Zona de perigo */}
+      <section className="mt-10 rounded-lg border border-destructive/40 bg-destructive/5 p-5">
+        <h2 className="font-serif text-lg text-destructive">Zona de perigo</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Eliminar a Hansa apaga permanentemente mercados, equipas, decisões, snapshots e resultados. Não é reversível.
+        </p>
+        <button
+          type="button"
+          onClick={() => { setEliminarErro(null); setNomeConfirm(""); setConfirmarEliminar(true); }}
+          className="mt-3 rounded-md border border-destructive px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10"
+        >
+          Eliminar Hansa
+        </button>
+      </section>
+
+      <AlertDialog open={confirmarEliminar} onOpenChange={(v) => !v && setConfirmarEliminar(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar {dados?.competicao?.nome}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Escreve o nome exacto da Hansa para confirmar. Esta operação apaga tudo em cascata e não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Input
+              autoFocus
+              placeholder={dados?.competicao?.nome ?? "Nome da Hansa"}
+              value={nomeConfirm}
+              onChange={(e) => setNomeConfirm(e.target.value)}
+            />
+            {eliminarErro && <p className="text-xs text-destructive">{eliminarErro}</p>}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={
+                eliminar.isPending ||
+                nomeConfirm.trim().toLowerCase() !== (dados?.competicao?.nome ?? "").trim().toLowerCase()
+              }
+              onClick={(e) => { e.preventDefault(); eliminar.mutate(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {eliminar.isPending ? "A eliminar…" : "Eliminar definitivamente"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PainelShell>
   );
 }

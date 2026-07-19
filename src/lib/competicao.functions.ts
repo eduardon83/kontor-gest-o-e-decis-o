@@ -225,3 +225,29 @@ export const regenerarEconomia = createServerFn({ method: "POST" })
     };
   });
 
+// ─── Eliminar competição (apenas dono ou admin da instituição) ─────────────
+export const eliminarCompeticao = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) => z.object({
+    competicao_id: z.string().uuid(),
+    confirmar_nome: z.string().min(1),
+  }).parse(raw))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertProfessorOwnsOrAdmin(supabase, userId, data.competicao_id);
+
+    const { data: comp } = await supabase.from("competicoes")
+      .select("id, nome").eq("id", data.competicao_id).maybeSingle();
+    if (!comp) throw new Error("Competição não encontrada.");
+    if (comp.nome.trim().toLowerCase() !== data.confirmar_nome.trim().toLowerCase()) {
+      throw new Error("Nome de confirmação não coincide com o nome da Hansa.");
+    }
+
+    // Elimina via admin — a cascata trata de mercados/equipas/rondas/snapshots/etc.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("competicoes").delete().eq("id", data.competicao_id);
+    if (error) throw new Error(error.message);
+    return { ok: true, nome: comp.nome };
+  });
+
+

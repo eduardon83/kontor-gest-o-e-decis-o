@@ -5,6 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useJogo } from "./JogoContext";
 import { Livre } from "./Livre";
 import { LUGARES, type Acesso } from "@/lib/jogo/tipos";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 
 function fmtPrazo(iso: string | null): string {
@@ -28,6 +33,7 @@ export function BarraTopo() {
   const [defAberto, setDefAberto] = useState(false);
   const [nomePerfil, setNomePerfil] = useState("");
   const [ocupadoCond, setOcupadoCond] = useState<"" | "submeter" | "resolver">("");
+  const [confirmarResolver, setConfirmarResolver] = useState(false);
 
   useEffect(() => {
     if (defAberto) {
@@ -160,11 +166,7 @@ export function BarraTopo() {
               <button
                 type="button"
                 disabled={ocupadoCond !== ""}
-                onClick={async () => {
-                  if (!confirm("Resolver o turno agora? Vai avançar para a próxima ronda.")) return;
-                  setOcupadoCond("resolver");
-                  try { await resolverTurno(); } finally { setOcupadoCond(""); }
-                }}
+                onClick={() => setConfirmarResolver(true)}
                 className="mono rounded-sm bg-gold px-3 py-1 text-[10px] uppercase tracking-widest text-navy hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {ocupadoCond === "resolver" ? "A resolver…" : "Resolver turno agora"}
@@ -173,6 +175,31 @@ export function BarraTopo() {
           </div>
         </div>
       )}
+
+      <AlertDialog open={confirmarResolver} onOpenChange={setConfirmarResolver}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Resolver o turno agora?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vou fechar a ronda atual, calcular resultados e abrir automaticamente a próxima ronda.
+              As decisões submetidas ficam registadas; as pendentes serão consideradas em branco.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                setConfirmarResolver(false);
+                setOcupadoCond("resolver");
+                try { await resolverTurno(); } finally { setOcupadoCond(""); }
+              }}
+            >
+              Resolver turno
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
 
       {defAberto && (
         <div className="border-t bg-card px-6 py-3 text-foreground" style={{ borderColor: "color-mix(in oklab, var(--gold) 25%, transparent)" }}>

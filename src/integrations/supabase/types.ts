@@ -569,6 +569,45 @@ export type Database = {
           },
         ]
       }
+      pedidos_docente: {
+        Row: {
+          criado_em: string
+          decidido_em: string | null
+          decidido_por: string | null
+          email: string
+          estado: string
+          id: string
+          instituicao: string | null
+          mensagem: string | null
+          nome: string | null
+          user_id: string
+        }
+        Insert: {
+          criado_em?: string
+          decidido_em?: string | null
+          decidido_por?: string | null
+          email: string
+          estado?: string
+          id?: string
+          instituicao?: string | null
+          mensagem?: string | null
+          nome?: string | null
+          user_id: string
+        }
+        Update: {
+          criado_em?: string
+          decidido_em?: string | null
+          decidido_por?: string | null
+          email?: string
+          estado?: string
+          id?: string
+          instituicao?: string | null
+          mensagem?: string | null
+          nome?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       perfis: {
         Row: {
           atualizado_em: string

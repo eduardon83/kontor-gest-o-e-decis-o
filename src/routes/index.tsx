@@ -37,6 +37,9 @@ function Landing() {
         </header>
 
         <div className="relative z-10 mx-auto max-w-6xl px-6 pt-16 pb-28 md:pt-24 md:pb-36">
+          <div className="mb-8 hidden md:block">
+            <LogoKontor size={128} cor="gold" />
+          </div>
           <p className="font-mono text-xs uppercase tracking-[0.28em] text-gold">
             Ensino superior · Gestão · Simulação
           </p>

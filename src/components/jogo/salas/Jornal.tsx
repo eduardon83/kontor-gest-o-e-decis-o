@@ -9,9 +9,45 @@ const CORES_ESTADO = {
 } as const;
 
 export function Jornal() {
-  const { snapshotAtual, setSala } = useJogo();
+  const { modo, snapshotAtual, snapshots, rivais, competicao_nome, equipa_nome, ronda_indice, setSala } = useJogo();
   const fin = financeiroDo(snapshotAtual);
   const turnoFin = Number((snapshotAtual as any)?.turno ?? 0);
+
+  const emReal = modo === "real";
+  const ultimoResolvido = snapshots.length ? snapshots[snapshots.length - 1] : null;
+  const turnoUltimo = ultimoResolvido?.ronda_indice ?? Math.max(0, ronda_indice - 1);
+  const faseEcon = (snapshotAtual as any)?.fase_economica ?? (ultimoResolvido?.snapshot as any)?.macro?.fase ?? null;
+
+  // Manchetes: em modo real são derivadas da economia macro e do próprio desempenho.
+  const manchetesReais = (() => {
+    if (!emReal) return null;
+    const arr: { tag: string; titulo: string }[] = [];
+    if (faseEcon) arr.push({ tag: "Economia", titulo: `Fase macroeconómica: ${faseEcon}` });
+    if (fin?.pnl?.resultado_liquido != null) {
+      const rl = Number(fin.pnl.resultado_liquido);
+      arr.push({
+        tag: "Resultados",
+        titulo:
+          rl >= 0
+            ? `${equipa_nome} fecha turno com lucro de ${fmtEUR(rl)}`
+            : `${equipa_nome} apura prejuízo de ${fmtEUR(Math.abs(rl))}`,
+      });
+    }
+    if (rivais.length) {
+      const top = [...rivais].sort((a, b) => b.valor - a.valor)[0];
+      if (top) arr.push({ tag: "Concorrência", titulo: `${top.nome} lidera a praça com ${fmtEUR(top.valor)}` });
+    }
+    if (!arr.length) arr.push({ tag: competicao_nome, titulo: "Sem turnos resolvidos — o jornal aparece após a primeira ronda." });
+    return arr;
+  })();
+
+  // Decisões da ronda anterior: em modo real deixamos indicadores neutros; o registo
+  // completo vive no gabinete. Sem dados fictícios.
+  const decisoesReais = emReal ? [] : JORNAL.decisoes;
+  const concorrenciaReal = emReal
+    ? [...rivais].sort((a, b) => b.valor - a.valor).slice(0, 3).map((r) => ({ inicial: r.nome[0] ?? "?", valor: r.valor, nome: r.nome }))
+    : JORNAL.concorrencia.map((c) => ({ ...c, nome: c.inicial }));
+
   return (
     <div className="space-y-6">
       {/* Jornal principal */}
@@ -25,15 +61,17 @@ export function Jornal() {
       >
         <header className="border-b-2 border-navy pb-4">
           <div className="mono flex items-center justify-between text-[10px] uppercase tracking-[0.3em] text-slate">
-            <span>Gazeta Comercial</span>
-            <span>{JORNAL.data}</span>
+            <span>Gazeta Comercial{emReal ? ` · ${competicao_nome}` : ""}</span>
+            <span>{emReal ? `Turno ${turnoUltimo || ronda_indice}` : JORNAL.data}</span>
           </div>
-          <h1 className="mt-2 font-serif text-4xl leading-none text-navy">A Semana em Revista</h1>
+          <h1 className="mt-2 font-serif text-4xl leading-none text-navy">
+            {emReal ? "A ronda em revista" : "A Semana em Revista"}
+          </h1>
         </header>
 
         <div className="mt-6 grid gap-6 md:grid-cols-2">
-          {JORNAL.manchetes.map((m) => (
-            <div key={m.titulo} className="border-l-2 border-gold pl-4">
+          {(manchetesReais ?? JORNAL.manchetes).map((m, i) => (
+            <div key={`${m.titulo}-${i}`} className="border-l-2 border-gold pl-4">
               <div className="mono text-[10px] uppercase tracking-widest text-gold">{m.tag}</div>
               <h2 className="mt-1 font-serif text-xl leading-tight text-navy">{m.titulo}</h2>
             </div>
@@ -66,6 +104,10 @@ export function Jornal() {
                 Ver detalhe no histórico →
               </button>
             </>
+          ) : emReal ? (
+            <p className="mt-3 text-sm text-muted-foreground">
+              Sem P&amp;L disponível — o relatório completo surge após o primeiro turno resolvido.
+            </p>
           ) : (
             <dl className="mono mt-3 space-y-1 text-sm">
               <Linha rotulo="Receita" valor={`${(JORNAL.demonstracao.receita / 1000).toFixed(1)}k €`} />
@@ -77,36 +119,49 @@ export function Jornal() {
 
         <div className="rounded-sm border bg-card p-4">
           <h3 className="font-serif text-lg">Decisões desta ronda</h3>
-          <ul className="mt-3 space-y-2 text-sm">
-            {JORNAL.decisoes.map((d, i) => (
-              <li key={i} className="flex items-start justify-between gap-2">
-                <div>
-                  <span className="mono text-[10px] uppercase tracking-widest text-muted-foreground">{d.pasta}</span>
-                  <div className="text-foreground">{d.texto}</div>
-                </div>
-                <span className={`mono shrink-0 text-[10px] uppercase tracking-widest ${CORES_ESTADO[d.estado]}`}>
-                  {d.estado}
-                </span>
-              </li>
-            ))}
-          </ul>
+          {emReal ? (
+            <p className="mt-3 text-sm text-muted-foreground">
+              Vê o registo detalhado por lugar no gabinete — o resumo aqui é anedótico.
+            </p>
+          ) : (
+            <ul className="mt-3 space-y-2 text-sm">
+              {decisoesReais.map((d, i) => (
+                <li key={i} className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="mono text-[10px] uppercase tracking-widest text-muted-foreground">{d.pasta}</span>
+                    <div className="text-foreground">{d.texto}</div>
+                  </div>
+                  <span className={`mono shrink-0 text-[10px] uppercase tracking-widest ${CORES_ESTADO[d.estado]}`}>
+                    {d.estado}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <div className="rounded-sm border bg-card p-4">
           <h3 className="font-serif text-lg">Concorrência (valor)</h3>
-          <ul className="mt-3 space-y-2">
-            {JORNAL.concorrencia.map((c) => (
-              <li key={c.inicial} className="flex items-center justify-between">
-                <span
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-sm border font-serif"
-                  style={{ backgroundColor: "var(--navy)", color: "var(--gold)", borderColor: "var(--gold)" }}
-                >
-                  {c.inicial}
-                </span>
-                <span className="mono text-lg">{(c.valor / 1000).toFixed(0)}k €</span>
-              </li>
-            ))}
-          </ul>
+          {concorrenciaReal.length === 0 ? (
+            <p className="mt-3 text-sm text-muted-foreground">Ainda sem rivais avaliados.</p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {concorrenciaReal.map((c, i) => (
+                <li key={`${c.inicial}-${i}`} className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-sm border font-serif"
+                      style={{ backgroundColor: "var(--navy)", color: "var(--gold)", borderColor: "var(--gold)" }}
+                    >
+                      {c.inicial}
+                    </span>
+                    {emReal && <span className="text-sm text-foreground">{c.nome}</span>}
+                  </div>
+                  <span className="mono text-lg">{(c.valor / 1000).toFixed(0)}k €</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </section>
     </div>

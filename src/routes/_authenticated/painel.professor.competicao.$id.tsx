@@ -184,13 +184,23 @@ function Pagina() {
         <p className="mt-1 text-sm text-muted-foreground">
           Eliminar a Hansa apaga permanentemente mercados, equipas, decisões, snapshots e resultados. Não é reversível.
         </p>
-        <button
-          type="button"
-          onClick={() => { setEliminarErro(null); setNomeConfirm(""); setConfirmarEliminar(true); }}
-          className="mt-3 rounded-md border border-destructive px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10"
-        >
-          Eliminar Hansa
-        </button>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => arquivar.mutate(true)}
+            disabled={arquivar.isPending}
+            className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted disabled:opacity-50"
+          >
+            {arquivar.isPending ? "A arquivar…" : "Fechar / arquivar Hansa"}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setEliminarErro(null); setNomeConfirm(""); setConfirmarEliminar(true); }}
+            className="rounded-md border border-destructive px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10"
+          >
+            Eliminar Hansa
+          </button>
+        </div>
       </section>
 
       <AlertDialog open={confirmarEliminar} onOpenChange={(v) => !v && setConfirmarEliminar(false)}>

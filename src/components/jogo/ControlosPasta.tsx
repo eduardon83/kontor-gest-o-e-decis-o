@@ -4,6 +4,9 @@ import { useJogo } from "./JogoContext";
 import { EstadoEquipa } from "./EstadoEquipa";
 import { TotalComprometidoCompacto } from "./PainelCustosComprometidos";
 import type { Lugar } from "@/lib/jogo/tipos";
+import { capacidadeCOO, tierEfetivo, MAO_H, MAO_MULT, MACH_H, RITMO_MULT, type Tier, type Ritmo } from "@/lib/jogo/capacidade";
+import { ID_NOS } from "@/lib/jogo/id-arvore";
+
 
 const POSTURAS: { valor: string; titulo: string; descricao: string }[] = [
   { valor: "Crescimento", titulo: "Crescimento", descricao: "Prioriza a expansão de vendas e capacidade produtiva." },

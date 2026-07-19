@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { PainelShell } from "@/components/painel/PainelShell";
 import { Button } from "@/components/ui/button";
+import { ConvitesPapel } from "@/components/painel/ConvitesPapel";
 import {
   listarUtilizadoresInstituicao,
   alterarPapelUtilizador,
@@ -59,6 +60,12 @@ function Pagina() {
         </div>
       )}
       {msg && <p className="mb-4 text-sm text-destructive">{msg}</p>}
+
+      <section className="mb-8">
+        <h2 className="mb-3 font-serif text-2xl">Convites de acesso</h2>
+        <ConvitesPapel papelDoUtilizador="admin_escolar" />
+      </section>
+
 
       <section className="mb-8">
         <h2 className="mb-3 font-serif text-2xl">Utilizadores</h2>

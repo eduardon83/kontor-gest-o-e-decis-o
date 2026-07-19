@@ -20,6 +20,7 @@ import {
 } from "@/lib/tema.functions";
 import { TemaProvider, useTema } from "@/components/tema/TemaProvider";
 import type { Tema, TemaSlots, TemaTokens } from "@/lib/tema/tipos";
+import { ConvitesPapel } from "@/components/painel/ConvitesPapel";
 
 export const Route = createFileRoute("/_authenticated/painel/super-admin")({
   component: Pagina,
@@ -30,12 +31,13 @@ type Comp = { id: string; nome: string; industria: string; instituicao_id: strin
 type Log = { id: string; acao: string; alvo: string | null; payload: any; ts: string; ator_user_id: string | null };
 
 function Pagina() {
-  const [aba, setAba] = useState<"instituicoes" | "tema" | "auditoria">("instituicoes");
+  const [aba, setAba] = useState<"instituicoes" | "convites" | "tema" | "auditoria">("instituicoes");
   return (
     <PainelShell papel="super_admin" titulo="Gestão global do Kontor" descricao="Instituições, temas, indústria e auditoria.">
       <div className="mb-6 flex gap-2 border-b border-border">
         {[
           ["instituicoes", "Instituições"],
+          ["convites", "Convites"],
           ["tema", "Temas"],
           ["auditoria", "Auditoria"],
         ].map(([k, l]) => (
@@ -51,10 +53,20 @@ function Pagina() {
         ))}
       </div>
       {aba === "instituicoes" && <AbaInstituicoes />}
+      {aba === "convites" && <AbaConvites />}
       {aba === "tema" && <AbaTema />}
       {aba === "auditoria" && <AbaAuditoria />}
     </PainelShell>
   );
+}
+
+function AbaConvites() {
+  const listar = useServerFn(listarInstituicoes);
+  const [insts, setInsts] = useState<Instituicao[]>([]);
+  useEffect(() => {
+    (async () => { try { setInsts((await listar()) as Instituicao[]); } catch {} })();
+  }, []);
+  return <ConvitesPapel papelDoUtilizador="super_admin" instituicoes={insts.map((i) => ({ id: i.id, nome: i.nome }))} />;
 }
 
 function AbaInstituicoes() {

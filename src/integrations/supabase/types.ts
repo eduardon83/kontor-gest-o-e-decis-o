@@ -80,7 +80,9 @@ export type Database = {
           atualizado_em: string
           avatar_variante: number
           competencia: number
+          competencia_inicial: number | null
           criado_em: string
+          entrou_ronda: number | null
           equipa_id: string
           id: string
           motivacao: number
@@ -88,9 +90,11 @@ export type Database = {
           nome: string
           papel_org: string
           produtividade_base: number
+          promocoes: number
           resiliencia: number
           salario_mult: number
           stress_individual: number
+          ultima_promocao_ronda: number | null
         }
         Insert: {
           antiguidade?: number
@@ -100,7 +104,9 @@ export type Database = {
           atualizado_em?: string
           avatar_variante?: number
           competencia?: number
+          competencia_inicial?: number | null
           criado_em?: string
+          entrou_ronda?: number | null
           equipa_id: string
           id?: string
           motivacao?: number
@@ -108,9 +114,11 @@ export type Database = {
           nome?: string
           papel_org?: string
           produtividade_base?: number
+          promocoes?: number
           resiliencia?: number
           salario_mult?: number
           stress_individual?: number
+          ultima_promocao_ronda?: number | null
         }
         Update: {
           antiguidade?: number
@@ -120,7 +128,9 @@ export type Database = {
           atualizado_em?: string
           avatar_variante?: number
           competencia?: number
+          competencia_inicial?: number | null
           criado_em?: string
+          entrou_ronda?: number | null
           equipa_id?: string
           id?: string
           motivacao?: number
@@ -128,9 +138,11 @@ export type Database = {
           nome?: string
           papel_org?: string
           produtividade_base?: number
+          promocoes?: number
           resiliencia?: number
           salario_mult?: number
           stress_individual?: number
+          ultima_promocao_ronda?: number | null
         }
         Relationships: [
           {
@@ -244,6 +256,57 @@ export type Database = {
             columns: ["instituicao_id"]
             isOneToOne: false
             referencedRelation: "instituicoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cronica_entradas: {
+        Row: {
+          criado_em: string
+          dados: Json
+          destaque: boolean
+          equipa_id: string
+          id: string
+          indice_turno: number
+          ronda_id: string | null
+          texto: string
+          tipo: string
+        }
+        Insert: {
+          criado_em?: string
+          dados?: Json
+          destaque?: boolean
+          equipa_id: string
+          id?: string
+          indice_turno: number
+          ronda_id?: string | null
+          texto: string
+          tipo: string
+        }
+        Update: {
+          criado_em?: string
+          dados?: Json
+          destaque?: boolean
+          equipa_id?: string
+          id?: string
+          indice_turno?: number
+          ronda_id?: string | null
+          texto?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cronica_entradas_equipa_id_fkey"
+            columns: ["equipa_id"]
+            isOneToOne: false
+            referencedRelation: "equipas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cronica_entradas_ronda_id_fkey"
+            columns: ["ronda_id"]
+            isOneToOne: false
+            referencedRelation: "rondas"
             referencedColumns: ["id"]
           },
         ]

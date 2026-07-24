@@ -57,7 +57,13 @@ export type Colaborador = {
   antiguidade: number;
   necessidades: Record<string, unknown>;
   salario_mult: number;
+  entrou_ronda?: number | null;
+  promocoes?: number | null;
+  ultima_promocao_ronda?: number | null;
+  competencia?: number | null;
+  competencia_inicial?: number | null;
 };
+
 
 export type Rival = { equipa_id: string; nome: string; valor: number };
 
@@ -318,7 +324,7 @@ export function JogoProvider({
       // Colaboradores
       const { data: cols } = await supabase
         .from("colaboradores")
-        .select("id, nome, arquetipo, avatar_variante, papel_org, motivacao, stress_individual, antiguidade, necessidades, salario_mult")
+        .select("id, nome, arquetipo, avatar_variante, papel_org, motivacao, stress_individual, antiguidade, necessidades, salario_mult, entrou_ronda, promocoes, ultima_promocao_ronda, competencia, competencia_inicial")
         .eq("equipa_id", equipaId)
         .eq("ativo", true);
 

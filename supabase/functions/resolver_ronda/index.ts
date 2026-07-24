@@ -12,6 +12,7 @@
 //   CHRO: { salario:number, formacao:number, bonus:number,
 //           acoes_pessoas:[{colaborador_id,tipo}], contratacoes:[{candidato_id}] }
 import { admin, corsHeaders, json } from "../_shared/supabase.ts";
+import { gerarCronica, type CronicaCtx, type CronicaEntrada } from "../_shared/cronica.ts";
 import { clamp, stream } from "../_shared/prng.ts";
 import {
   CONST, PRECEDENCIA, PRODUTOS, TIERS, type Produto, type Tier,
@@ -233,6 +234,78 @@ Deno.serve(async (req) => {
         const v = Number(a.custo ?? 0);
         if (!v) continue;
         custosPesquisaPorEquipa.set(a.equipa_id, (custosPesquisaPorEquipa.get(a.equipa_id) ?? 0) + v);
+      }
+    }
+
+    // ─── Histórico prévio para a Crónica (resultados/snapshots dos turnos anteriores) ─
+    const equipaIds = equipasArr.map((e) => e.id);
+    const { data: rondasAnt } = await sb.from("rondas")
+      .select("id, indice").eq("competicao_id", ronda.competicao_id).lt("indice", ronda.indice);
+    const rondaIdsAnt = (rondasAnt ?? []).map((r) => r.id);
+    const idxPorRonda = new Map<string, number>();
+    for (const r of rondasAnt ?? []) idxPorRonda.set(r.id, Number(r.indice));
+
+    const valoresPreviosPorEquipa = new Map<string, number[]>();   // ordem: mais antigo → mais recente
+    const resultadosPreviosPorEquipa = new Map<string, number[]>();
+    const posicaoAnteriorPorEquipa = new Map<string, number | null>();
+    const snapshotAnteriorPorEquipa = new Map<string, Record<string, unknown> | null>();
+    const contadorLucrosPorEquipa = new Map<string, number>();
+    const contadorPrejuizosPorEquipa = new Map<string, number>();
+
+    if (rondaIdsAnt.length && equipaIds.length) {
+      const { data: resAnt } = await sb.from("resultados")
+        .select("equipa_id, ronda_id, valor, posicao").in("ronda_id", rondaIdsAnt).in("equipa_id", equipaIds);
+      const { data: snapsAnt } = await sb.from("estado_empresa")
+        .select("equipa_id, ronda_id, snapshot").in("ronda_id", rondaIdsAnt).in("equipa_id", equipaIds);
+
+      // Índice de resultados por (equipa, indice_turno).
+      const resPorEq = new Map<string, { indice: number; valor: number; posicao: number | null }[]>();
+      for (const r of (resAnt ?? []) as { equipa_id: string; ronda_id: string; valor: number; posicao: number | null }[]) {
+        const idx = idxPorRonda.get(r.ronda_id);
+        if (idx == null) continue;
+        const arr = resPorEq.get(r.equipa_id) ?? [];
+        arr.push({ indice: idx, valor: Number(r.valor ?? 0), posicao: r.posicao ?? null });
+        resPorEq.set(r.equipa_id, arr);
+      }
+      for (const [eid, arr] of resPorEq) {
+        arr.sort((a, b) => a.indice - b.indice);
+        // Últimos 2 valores.
+        const ult = arr.slice(-2).map((x) => x.valor);
+        valoresPreviosPorEquipa.set(eid, ult);
+        // Posição no turno imediatamente anterior.
+        const prev = arr[arr.length - 1];
+        posicaoAnteriorPorEquipa.set(eid, prev?.posicao ?? null);
+      }
+
+      // Snapshots — resultados líquidos anteriores e último snapshot detalhado.
+      const snapsPorEq = new Map<string, { indice: number; snap: Record<string, unknown> }[]>();
+      for (const s of (snapsAnt ?? []) as { equipa_id: string; ronda_id: string; snapshot: Record<string, unknown> }[]) {
+        const idx = idxPorRonda.get(s.ronda_id);
+        if (idx == null || !s.snapshot) continue;
+        const arr = snapsPorEq.get(s.equipa_id) ?? [];
+        arr.push({ indice: idx, snap: s.snapshot });
+        snapsPorEq.set(s.equipa_id, arr);
+      }
+      for (const [eid, arr] of snapsPorEq) {
+        arr.sort((a, b) => a.indice - b.indice);
+        snapshotAnteriorPorEquipa.set(eid, arr[arr.length - 1]?.snap ?? null);
+        let lucros = 0, prejs = 0;
+        // Conta ocorrências prévias; e conta a "cauda" de prejuízos consecutivos até ao presente.
+        for (const { snap } of arr) {
+          const r = Number((snap as { resultado?: number }).resultado ?? 0);
+          if (r > 0) lucros++;
+          else if (r < 0) prejs++;
+        }
+        contadorLucrosPorEquipa.set(eid, lucros);
+        contadorPrejuizosPorEquipa.set(eid, prejs);
+        // "regressoLucro" será calculado como comprimento da cauda negativa mais recente:
+        let cauda = 0;
+        for (let i = arr.length - 1; i >= 0; i--) {
+          const r = Number((arr[i].snap as { resultado?: number }).resultado ?? 0);
+          if (r < 0) cauda++;
+          else break;
+        }
+        resultadosPreviosPorEquipa.set(eid, [cauda]); // convenção: [0] = comprimento da cauda negativa
       }
     }
 
@@ -643,6 +716,8 @@ Deno.serve(async (req) => {
           colabsUpdatesGlobal.push({ id: c.id, patch: {
             papel_org: "supervisor", salario_mult: 1.4,
             motivacao: clamp(Number(c.motivacao) + 5, 0, 100),
+            promocoes: Number(c.promocoes ?? 0) + 1,
+            ultima_promocao_ronda: ronda.indice,
           } });
           trabDelta.trabalhadores -= 1; trabDelta.supervisores += 1;
           promoNum++;
@@ -652,6 +727,8 @@ Deno.serve(async (req) => {
           colabsUpdatesGlobal.push({ id: c.id, patch: {
             papel_org: "gestor_linha", salario_mult: 2.0,
             motivacao: clamp(Number(c.motivacao) + 5, 0, 100),
+            promocoes: Number(c.promocoes ?? 0) + 1,
+            ultima_promocao_ronda: ronda.indice,
           } });
           trabDelta.supervisores -= 1; trabDelta.gestor_linha += 1;
           promoNum++;
@@ -661,11 +738,14 @@ Deno.serve(async (req) => {
           colabsUpdatesGlobal.push({ id: c.id, patch: {
             salario_mult: novoMult,
             motivacao: clamp(Number(c.motivacao) + 5, 0, 100),
+            promocoes: Number(c.promocoes ?? 0) + 1,
+            ultima_promocao_ronda: ronda.indice,
           } });
           promoNum++;
           b.auditoria.push({ acao: "promocao_merito", payload: { id: c.id, salario_mult: novoMult } });
         }
       }
+
 
       // Regenerar o pool determinístico para validar contratações.
       const pool = gerarPoolCandidatos({
@@ -690,10 +770,14 @@ Deno.serve(async (req) => {
           salario_mult: cand.salario_mult,
           necessidades: { ambicao: cand.atributos.ambicao },
           ativo: true,
+          entrou_ronda: ronda.indice,
+          competencia_inicial: cand.atributos.competencia,
+          promocoes: 0,
         });
         trabDelta.trabalhadores += 1;
         b.auditoria.push({ acao: "contratacao", payload: { candidato_id: cand.id, salario_mult: cand.salario_mult } });
       }
+
 
       // Atualização de fatores (§9) — inclui bonus de moral por promoção.
       const dM = ((b.wageRatio >= 1.10 ? 6 : b.wageRatio >= 1.0 ? 1 : -8)
@@ -894,6 +978,8 @@ Deno.serve(async (req) => {
     if (auditoriaInsert.length) await sb.from("log_auditoria").insert(auditoriaInsert);
 
     // Posições por mercado.
+    const posicaoAtualPorEquipa = new Map<string, number>();
+    const totalPorMercado = new Map<string, number>();
     for (const [_mid, entradas] of apeloPorMercado) {
       const ranked = entradas
         .map((e) => ({
@@ -906,8 +992,65 @@ Deno.serve(async (req) => {
       for (let i = 0; i < ranked.length; i++) {
         await sb.from("resultados").update({ posicao: i + 1 })
           .eq("equipa_id", ranked[i].equipa_id).eq("ronda_id", ronda.id);
+        posicaoAtualPorEquipa.set(ranked[i].equipa_id, i + 1);
       }
+      for (const e of entradas) totalPorMercado.set(e.mercado_id, entradas.length);
     }
+
+    // ─── Crónica da Casa (determinística) ────────────────────────────────
+    const cronicaInsert: CronicaEntrada[] = [];
+    for (const b of buffer) {
+      const nomeEmpresa = equipasArr.find((e) => e.id === b.equipa_id)?.nome ?? "a casa";
+      const snapAtual = snapshotsInsert.find((s) => s.equipa_id === b.equipa_id)?.snapshot as any;
+      if (!snapAtual) continue;
+      const snapAnt = snapshotAnteriorPorEquipa.get(b.equipa_id) ?? null;
+      const valores = valoresPreviosPorEquipa.get(b.equipa_id) ?? [];
+      const cauda = (resultadosPreviosPorEquipa.get(b.equipa_id) ?? [0])[0] ?? 0;
+      const lucrosAnt = contadorLucrosPorEquipa.get(b.equipa_id) ?? 0;
+      const prejsAnt = contadorPrejuizosPorEquipa.get(b.equipa_id) ?? 0;
+      const meta = (colabsPorEquipa.get(b.equipa_id) ?? []).map((c: any) => ({
+        id: c.id, nome: c.nome, arquetipo: c.arquetipo, papel_org: c.papel_org,
+        entrou_ronda: c.entrou_ronda ?? null, antiguidade: c.antiguidade ?? null,
+      }));
+      const ctx: CronicaCtx = {
+        equipa_id: b.equipa_id, ronda_id: ronda.id, turno: ronda.indice, nomeEmpresa,
+        snapshotAtual: {
+          valor: Number(snapAtual.valor ?? 0),
+          resultado: Number(snapAtual.resultado ?? 0),
+          quota: Number(snapAtual.quota ?? 0),
+          caixa: Number(snapAtual.caixa ?? 0),
+          divida: Number(snapAtual.divida ?? 0),
+          marca: Number(snapAtual.marca ?? 0),
+          moral: Number(snapAtual.moral ?? 0),
+        },
+        snapshotAnterior: snapAnt ? {
+          valor: Number((snapAnt as any).valor ?? 0),
+          resultado: Number((snapAnt as any).resultado ?? 0),
+          quota: Number((snapAnt as any).quota ?? 0),
+          caixa: Number((snapAnt as any).caixa ?? 0),
+          divida: Number((snapAnt as any).divida ?? 0),
+          marca: Number((snapAnt as any).marca ?? 0),
+        } : null,
+        valoresPrevios: valores,
+        resultadosPrevios: [],
+        posicaoAtual: posicaoAtualPorEquipa.get(b.equipa_id) ?? null,
+        posicaoAnterior: posicaoAnteriorPorEquipa.get(b.equipa_id) ?? null,
+        totalEquipasMercado: totalPorMercado.get(b.mercado_id) ?? 0,
+        eventos: (snapAtual.eventos_lista as string[] | undefined) ?? (snapAtual.financeiro?.eventos ?? []),
+        auditoria: b.auditoria,
+        colabsMeta: meta,
+        primeiroLucro: lucrosAnt === 0 && Number(snapAtual.resultado ?? 0) > 0,
+        primeiroPrejuizo: prejsAnt === 0 && Number(snapAtual.resultado ?? 0) < 0,
+        regressoLucro: Number(snapAtual.resultado ?? 0) > 0 ? cauda : 0,
+      };
+      const entradas = gerarCronica(ctx);
+      for (const e of entradas) cronicaInsert.push(e);
+    }
+    if (cronicaInsert.length) {
+      const { error: eCr } = await sb.from("cronica_entradas").insert(cronicaInsert);
+      if (eCr) console.warn("[cronica_entradas]", eCr.message);
+    }
+
 
     await sb.from("rondas").update({ estado: "resolvida" }).eq("id", ronda.id);
     if (ronda.indice < comp.duracao_turnos) {

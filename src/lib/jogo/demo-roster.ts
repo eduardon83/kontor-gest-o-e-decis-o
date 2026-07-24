@@ -63,6 +63,11 @@ export function gerarRosterDemo(seedKey = "demo:marnera:1"): Colaborador[] {
     const salario_mult = Number((salBase * rr(r, 0.95, 1.12)).toFixed(3));
     const variante = (r() < 0.5 ? 1 : 2) as 1 | 2;
     const id = `demo-col-${i.toString().padStart(2, "0")}`;
+    const antiguidade = ri(r, 1, 5);
+    const entrou_ronda = Math.max(1, 5 - antiguidade); // demo começa no turno 5
+    const promocoes = arq === "Aprendiz" && r() < 0.4 ? 1 : arq === "Veterano" ? ri(r, 1, 3) : 0;
+    const competencia_inicial = Number(rr(r, 0.65, 0.9).toFixed(2));
+    const competencia = Number((competencia_inicial + rr(r, -0.05, 0.15)).toFixed(2));
     out.push({
       id,
       nome: nomePt(`${seedKey}:${id}`, sexoDaVariante(variante)),
@@ -71,11 +76,17 @@ export function gerarRosterDemo(seedKey = "demo:marnera:1"): Colaborador[] {
       papel_org: papel,
       motivacao: Math.round(rr(r, 42, 88)),
       stress_individual: Math.round(rr(r, 18, 72)),
-      antiguidade: ri(r, 1, 14),
+      antiguidade,
       necessidades: pick(r, necessidadesPool),
       salario_mult,
+      entrou_ronda,
+      promocoes,
+      ultima_promocao_ronda: promocoes > 0 ? Math.max(entrou_ronda, ri(r, entrou_ronda, 5)) : null,
+      competencia,
+      competencia_inicial,
     });
   }
+
   return out;
 }
 

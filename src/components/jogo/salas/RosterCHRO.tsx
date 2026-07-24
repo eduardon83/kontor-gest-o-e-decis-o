@@ -26,6 +26,26 @@ function normalizaArq(a: string | null | undefined): Arquetipo {
   return (ARQUETIPOS as readonly string[]).includes(cap) ? (cap as Arquetipo) : "Esteio";
 }
 
+function narrativaColaborador(c: any, turnoAtual: number): string | null {
+  const entrou = typeof c.entrou_ronda === "number" ? c.entrou_ronda : null;
+  const promocoes = Number(c.promocoes ?? 0);
+  const ultimaProm = typeof c.ultima_promocao_ronda === "number" ? c.ultima_promocao_ronda : null;
+  const compAt = typeof c.competencia === "number" ? c.competencia : null;
+  const compIni = typeof c.competencia_inicial === "number" ? c.competencia_inicial : null;
+
+  const partes: string[] = [];
+  if (entrou == null || entrou <= 1) partes.push("na casa desde o turno 1");
+  else partes.push(`entrou no turno ${entrou}`);
+
+  if (promocoes === 0) partes.push("nunca foi promovido(a)");
+  else if (ultimaProm != null) partes.push(`última promoção no turno ${ultimaProm}`);
+
+  if (compIni != null && compAt != null && Math.abs(compAt - compIni) >= 0.05) {
+    partes.push(`competência de ${compIni.toFixed(2)} → ${compAt.toFixed(2)}`);
+  }
+  return partes.length ? partes.join(" · ") : null;
+}
+
 function opcoesPara(papel_org: string): { tipo: TipoAcaoPessoa; label: string }[] {
   switch (papel_org) {
     case "trabalhador":
@@ -86,6 +106,7 @@ export function RosterCHRO() {
     modo, colaboradores, chro_candidatos, podeEditar,
     chroAcoesPendentes, adicionarAcaoPessoa, removerAcaoPessoa,
     adicionarContratacao, removerContratacao, rascunho, decisoes,
+    ronda_indice,
   } = useJogo();
   const editavel = podeEditar("CHRO");
 
@@ -94,6 +115,7 @@ export function RosterCHRO() {
     ?? (decisoes.CHRO?.payload as any)?.contratacoes
     ?? []
   ) as { candidato_id: string }[];
+
 
   if (modo !== "real" && colaboradores.length === 0) {
     return (
@@ -124,9 +146,11 @@ export function RosterCHRO() {
                 pendente={chroAcoesPendentes(c.id)}
                 onAplicar={adicionarAcaoPessoa}
                 onCancelar={() => removerAcaoPessoa(c.id)}
+                turnoAtual={ronda_indice}
               />
             ))}
           </ul>
+
         )}
       </section>
 
@@ -150,12 +174,14 @@ function LinhaColaborador({
   pendente,
   onAplicar,
   onCancelar,
+  turnoAtual,
 }: {
   colaborador: any;
   editavel: boolean;
   pendente: AcaoPessoa | null;
   onAplicar: (a: AcaoPessoa) => void;
   onCancelar: () => void;
+  turnoAtual: number;
 }) {
   const [menuAberto, setMenuAberto] = useState(false);
   const [confirmar, setConfirmar] = useState<TipoAcaoPessoa | null>(null);
@@ -163,6 +189,8 @@ function LinhaColaborador({
 
   const arq = normalizaArq(colaborador.arquetipo);
   const variante = (colaborador.avatar_variante === 2 ? 2 : 1) as 1 | 2;
+
+  const historia = narrativaColaborador(colaborador, turnoAtual);
 
   return (
     <li className="relative flex items-center gap-3 rounded-sm border bg-background p-3">
@@ -177,6 +205,10 @@ function LinhaColaborador({
         <div className="mono truncate text-[10px] uppercase tracking-widest text-muted-foreground">
           {PAPEL_ROTULO[colaborador.papel_org] ?? colaborador.papel_org} · {fmtEur(salarioAtualMensal)}/mês
         </div>
+        {historia && (
+          <div className="mt-1 text-[11px] italic text-muted-foreground/90">{historia}</div>
+        )}
+
         <div className="mt-2 space-y-1">
           <Barra rotulo="Moral" valor={Math.round(Number(colaborador.motivacao))} />
           <Barra rotulo="Stress" valor={Math.round(Number(colaborador.stress_individual))} inverso />

@@ -309,6 +309,7 @@ Deno.serve(async (req) => {
       }
     }
 
+    for (const eq of equipasArr) {
       const estado = await estadoPrevio(eq.id);
       const decisoesEq = decisoesPorEquipa.get(eq.id) ?? [];
       const { decisoesFinais, auditoria, aDelta } = aplicarPoliticaEPrecedencia(

@@ -198,7 +198,10 @@ export function BarraTopo() {
               onClick={async () => {
                 setConfirmarResolver(false);
                 setOcupadoCond("resolver");
-                try { await resolverTurno(); } finally { setOcupadoCond(""); }
+                try {
+                  await resolverTurno();
+                  setRitualAberto(true);
+                } finally { setOcupadoCond(""); }
               }}
             >
               Resolver turno
@@ -206,6 +209,11 @@ export function BarraTopo() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <RitualFecho
+        open={ritualAberto}
+        onDone={() => { setRitualAberto(false); try { setSala?.("jornal"); } catch {} }}
+      />
 
 
       {defAberto && (

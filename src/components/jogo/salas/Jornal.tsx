@@ -1,6 +1,10 @@
 import { JORNAL } from "@/lib/jogo/dados-exemplo";
 import { useJogo } from "../JogoContext";
 import { fmtEUR, financeiroDo } from "../RelatorioFinanceiro";
+import {
+  manchetePrincipal, noticiasEconomia, colunaOpiniao,
+  anunciosDasCasas, cartasAoDiretor, necrologia,
+} from "@/lib/jogo/jornal-real";
 
 const CORES_ESTADO = {
   aplicado: "text-gold",
@@ -9,7 +13,7 @@ const CORES_ESTADO = {
 } as const;
 
 export function Jornal() {
-  const { modo, snapshotAtual, snapshots, rivais, competicao_nome, equipa_nome, ronda_indice, setSala } = useJogo();
+  const { modo, snapshotAtual, snapshots, rivais, competicao_nome, equipa_nome, ronda_indice, setSala, decisoes } = useJogo() as any;
   const fin = financeiroDo(snapshotAtual);
   const turnoFin = Number((snapshotAtual as any)?.turno ?? 0);
 
@@ -213,6 +217,99 @@ export function Jornal() {
           )}
         </div>
       </section>
+
+      {emReal && (() => {
+        const snapAnt = snapshots.length >= 2 ? snapshots[snapshots.length - 2].snapshot : null;
+        const manchete = manchetePrincipal({
+          rivaisAtuais: rivais ?? [], rivaisAnteriores: [],
+          snapshotAtual, snapshotAnterior: snapAnt,
+          competicao_nome, equipa_nome, turno: turnoUltimo || ronda_indice,
+        });
+        const macroNoticias = noticiasEconomia({ macroAtual, macroAnterior, faseEcon });
+        const opiniao = colunaOpiniao({
+          rivaisAtuais: rivais ?? [], rivaisAnteriores: [],
+          snapshotAtual, snapshotAnterior: snapAnt, turno: turnoUltimo || ronda_indice,
+        });
+        const anuncios = anunciosDasCasas({
+          rivaisAtuais: rivais ?? [], rivaisAnteriores: [],
+          snapshotAtual, decisoes: decisoes ?? {}, equipa_nome,
+        });
+        const cartas = cartasAoDiretor(notas as any);
+        const necros = necrologia({ rivaisAtuais: rivais ?? [], rivaisAnteriores: [] });
+
+        return (
+          <section className="grid gap-6 lg:grid-cols-3">
+            <article className="lg:col-span-2 rounded-sm border p-6" style={{ backgroundColor: "var(--paper)" }}>
+              <div className="mono text-[10px] uppercase tracking-widest text-gold">{manchete.tag}</div>
+              <h2 className="mt-1 font-serif text-2xl text-navy">{manchete.titulo}</h2>
+              {manchete.sub && <p className="mt-2 text-sm text-navy/80">{manchete.sub}</p>}
+
+              {macroNoticias.length > 0 && (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 border-t border-navy/20 pt-4">
+                  {macroNoticias.map((n, i) => (
+                    <div key={i} className="border-l-2 border-gold pl-3">
+                      <div className="mono text-[9px] uppercase tracking-widest text-gold">{n.tag}</div>
+                      <div className="font-serif text-base text-navy">{n.titulo}</div>
+                      {n.sub && <div className="mono text-[10px] text-slate">{n.sub}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {necros.length > 0 && (
+                <div className="mt-4 border-t border-navy/20 pt-4">
+                  <div className="mono text-[10px] uppercase tracking-widest text-destructive">Necrologia</div>
+                  <ul className="mt-1 space-y-1 text-sm text-navy/90">
+                    {necros.map((n, i) => <li key={i}>· {n}</li>)}
+                  </ul>
+                </div>
+              )}
+            </article>
+
+            <aside className="rounded-sm border bg-card p-4">
+              {opiniao ? (
+                <>
+                  <div className="mono text-[10px] uppercase tracking-widest text-gold">Coluna · {opiniao.autor}</div>
+                  <h3 className="mt-1 font-serif text-lg italic">{opiniao.titulo}</h3>
+                  <p className="mt-2 text-sm text-foreground/90">{opiniao.corpo}</p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">O colunista está em silêncio esta semana.</p>
+              )}
+            </aside>
+
+            {anuncios.length > 0 && (
+              <div className="lg:col-span-2 rounded-sm border bg-card p-4">
+                <div className="mono text-[10px] uppercase tracking-widest text-muted-foreground">Anúncios das casas</div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {anuncios.map((a, i) => (
+                    <div key={i} className={`rounded-sm border p-3 ${a.tamanho === "grande" ? "sm:col-span-2 border-gold bg-gold/5" : a.tamanho === "media" ? "border-navy/40" : "border-muted"}`}>
+                      <div className={`font-serif ${a.tamanho === "grande" ? "text-lg" : "text-sm"} text-navy`}>{a.titulo}</div>
+                      <div className="mt-1 text-xs text-foreground/80">{a.corpo}</div>
+                      <div className="mono mt-1 text-[9px] uppercase tracking-widest text-muted-foreground">{a.casa}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {cartas.length > 0 && (
+              <div className="rounded-sm border bg-card p-4">
+                <div className="mono text-[10px] uppercase tracking-widest text-muted-foreground">Cartas ao diretor</div>
+                <ul className="mt-3 space-y-3">
+                  {cartas.map((c, i) => (
+                    <li key={i}>
+                      <div className="font-serif text-sm italic">"{c.assunto}"</div>
+                      <p className="mt-1 text-xs text-foreground/85">{c.corpo}</p>
+                      <div className="mono mt-1 text-[9px] uppercase tracking-widest text-muted-foreground">— {c.autor}</div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+        );
+      })()}
     </div>
   );
 }

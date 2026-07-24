@@ -57,7 +57,13 @@ export type Colaborador = {
   antiguidade: number;
   necessidades: Record<string, unknown>;
   salario_mult: number;
+  entrou_ronda?: number | null;
+  promocoes?: number | null;
+  ultima_promocao_ronda?: number | null;
+  competencia?: number | null;
+  competencia_inicial?: number | null;
 };
+
 
 export type Rival = { equipa_id: string; nome: string; valor: number };
 

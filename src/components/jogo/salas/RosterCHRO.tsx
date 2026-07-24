@@ -86,6 +86,7 @@ export function RosterCHRO() {
     modo, colaboradores, chro_candidatos, podeEditar,
     chroAcoesPendentes, adicionarAcaoPessoa, removerAcaoPessoa,
     adicionarContratacao, removerContratacao, rascunho, decisoes,
+    ronda_indice,
   } = useJogo();
   const editavel = podeEditar("CHRO");
 
@@ -94,6 +95,7 @@ export function RosterCHRO() {
     ?? (decisoes.CHRO?.payload as any)?.contratacoes
     ?? []
   ) as { candidato_id: string }[];
+
 
   if (modo !== "real" && colaboradores.length === 0) {
     return (

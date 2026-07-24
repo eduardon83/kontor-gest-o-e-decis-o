@@ -126,9 +126,11 @@ export function RosterCHRO() {
                 pendente={chroAcoesPendentes(c.id)}
                 onAplicar={adicionarAcaoPessoa}
                 onCancelar={() => removerAcaoPessoa(c.id)}
+                turnoAtual={ronda_indice}
               />
             ))}
           </ul>
+
         )}
       </section>
 

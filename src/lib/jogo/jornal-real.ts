@@ -420,7 +420,7 @@ export function necrologia(args: {
  * ============================================================ */
 export type PassoWaterfall = { rotulo: string; valor: number; tipo: "positivo" | "negativo" | "acumulado" };
 
-export function waterfallDaP&L(fin: any): PassoWaterfall[] {
+export function waterfallDaPnL(fin: any): PassoWaterfall[] {
   if (!fin?.pnl) return [];
   const p = fin.pnl;
   return [

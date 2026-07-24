@@ -385,8 +385,8 @@ export function cartasAoDiretor(notas: { acao: string; payload?: any }[]): Carta
       autor: "Um credor prudente",
       assunto: "Sobre a nova linha de crédito",
       corpo:
-        "Senhor Diretor: aceito com desagrado que a casa tenha recorrido à linha automática. Compreendo a urgência, ` +" +
-        " mas os juros não perdoam sentimentos. Aguardo o plano de amortização com o interesse de sempre.",
+        "Senhor Diretor: aceito com desagrado que a casa tenha recorrido à linha automática. Compreendo a urgência, " +
+        "mas os juros não perdoam sentimentos. Aguardo o plano de amortização com o interesse de sempre.",
     });
   }
   if (acoes.some((a) => /despedi/i.test(a))) {

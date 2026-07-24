@@ -22,12 +22,14 @@ function fmtPrazo(iso: string | null): string {
   return `${h}h ${m}m`;
 }
 
+import { RitualFecho } from "./RitualFecho";
+
 export function BarraTopo() {
   const {
     nomeEmpresa, acesso, setAcesso, modo, meu_lugar_real,
     ronda_indice, ronda_total, ronda_prazo, snapshotAtual, guardarNomePerfil,
     competicao_id, equipa_id,
-    condutor, submeterTodos, resolverTurno, submetidos,
+    condutor, submeterTodos, resolverTurno, submetidos, setSala,
   } = useJogo() as any;
 
   const navigate = useNavigate();
@@ -35,6 +37,7 @@ export function BarraTopo() {
   const [nomePerfil, setNomePerfil] = useState("");
   const [ocupadoCond, setOcupadoCond] = useState<"" | "submeter" | "resolver">("");
   const [confirmarResolver, setConfirmarResolver] = useState(false);
+  const [ritualAberto, setRitualAberto] = useState(false);
 
   useEffect(() => {
     if (defAberto) {

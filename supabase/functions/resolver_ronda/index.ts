@@ -237,7 +237,78 @@ Deno.serve(async (req) => {
       }
     }
 
-    for (const eq of equipasArr) {
+    // ─── Histórico prévio para a Crónica (resultados/snapshots dos turnos anteriores) ─
+    const equipaIds = equipasArr.map((e) => e.id);
+    const { data: rondasAnt } = await sb.from("rondas")
+      .select("id, indice").eq("competicao_id", ronda.competicao_id).lt("indice", ronda.indice);
+    const rondaIdsAnt = (rondasAnt ?? []).map((r) => r.id);
+    const idxPorRonda = new Map<string, number>();
+    for (const r of rondasAnt ?? []) idxPorRonda.set(r.id, Number(r.indice));
+
+    const valoresPreviosPorEquipa = new Map<string, number[]>();   // ordem: mais antigo → mais recente
+    const resultadosPreviosPorEquipa = new Map<string, number[]>();
+    const posicaoAnteriorPorEquipa = new Map<string, number | null>();
+    const snapshotAnteriorPorEquipa = new Map<string, Record<string, unknown> | null>();
+    const contadorLucrosPorEquipa = new Map<string, number>();
+    const contadorPrejuizosPorEquipa = new Map<string, number>();
+
+    if (rondaIdsAnt.length && equipaIds.length) {
+      const { data: resAnt } = await sb.from("resultados")
+        .select("equipa_id, ronda_id, valor, posicao").in("ronda_id", rondaIdsAnt).in("equipa_id", equipaIds);
+      const { data: snapsAnt } = await sb.from("estado_empresa")
+        .select("equipa_id, ronda_id, snapshot").in("ronda_id", rondaIdsAnt).in("equipa_id", equipaIds);
+
+      // Índice de resultados por (equipa, indice_turno).
+      const resPorEq = new Map<string, { indice: number; valor: number; posicao: number | null }[]>();
+      for (const r of (resAnt ?? []) as { equipa_id: string; ronda_id: string; valor: number; posicao: number | null }[]) {
+        const idx = idxPorRonda.get(r.ronda_id);
+        if (idx == null) continue;
+        const arr = resPorEq.get(r.equipa_id) ?? [];
+        arr.push({ indice: idx, valor: Number(r.valor ?? 0), posicao: r.posicao ?? null });
+        resPorEq.set(r.equipa_id, arr);
+      }
+      for (const [eid, arr] of resPorEq) {
+        arr.sort((a, b) => a.indice - b.indice);
+        // Últimos 2 valores.
+        const ult = arr.slice(-2).map((x) => x.valor);
+        valoresPreviosPorEquipa.set(eid, ult);
+        // Posição no turno imediatamente anterior.
+        const prev = arr[arr.length - 1];
+        posicaoAnteriorPorEquipa.set(eid, prev?.posicao ?? null);
+      }
+
+      // Snapshots — resultados líquidos anteriores e último snapshot detalhado.
+      const snapsPorEq = new Map<string, { indice: number; snap: Record<string, unknown> }[]>();
+      for (const s of (snapsAnt ?? []) as { equipa_id: string; ronda_id: string; snapshot: Record<string, unknown> }[]) {
+        const idx = idxPorRonda.get(s.ronda_id);
+        if (idx == null || !s.snapshot) continue;
+        const arr = snapsPorEq.get(s.equipa_id) ?? [];
+        arr.push({ indice: idx, snap: s.snapshot });
+        snapsPorEq.set(s.equipa_id, arr);
+      }
+      for (const [eid, arr] of snapsPorEq) {
+        arr.sort((a, b) => a.indice - b.indice);
+        snapshotAnteriorPorEquipa.set(eid, arr[arr.length - 1]?.snap ?? null);
+        let lucros = 0, prejs = 0;
+        // Conta ocorrências prévias; e conta a "cauda" de prejuízos consecutivos até ao presente.
+        for (const { snap } of arr) {
+          const r = Number((snap as { resultado?: number }).resultado ?? 0);
+          if (r > 0) lucros++;
+          else if (r < 0) prejs++;
+        }
+        contadorLucrosPorEquipa.set(eid, lucros);
+        contadorPrejuizosPorEquipa.set(eid, prejs);
+        // "regressoLucro" será calculado como comprimento da cauda negativa mais recente:
+        let cauda = 0;
+        for (let i = arr.length - 1; i >= 0; i--) {
+          const r = Number((arr[i].snap as { resultado?: number }).resultado ?? 0);
+          if (r < 0) cauda++;
+          else break;
+        }
+        resultadosPreviosPorEquipa.set(eid, [cauda]); // convenção: [0] = comprimento da cauda negativa
+      }
+    }
+
       const estado = await estadoPrevio(eq.id);
       const decisoesEq = decisoesPorEquipa.get(eq.id) ?? [];
       const { decisoesFinais, auditoria, aDelta } = aplicarPoliticaEPrecedencia(

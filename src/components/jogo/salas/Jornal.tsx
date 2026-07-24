@@ -13,7 +13,7 @@ const CORES_ESTADO = {
 } as const;
 
 export function Jornal() {
-  const { modo, snapshotAtual, snapshots, rivais, competicao_nome, equipa_nome, ronda_indice, setSala } = useJogo();
+  const { modo, snapshotAtual, snapshots, rivais, competicao_nome, equipa_nome, ronda_indice, setSala, decisoes } = useJogo() as any;
   const fin = financeiroDo(snapshotAtual);
   const turnoFin = Number((snapshotAtual as any)?.turno ?? 0);
 

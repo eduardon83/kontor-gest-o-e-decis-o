@@ -324,7 +324,7 @@ export function JogoProvider({
       // Colaboradores
       const { data: cols } = await supabase
         .from("colaboradores")
-        .select("id, nome, arquetipo, avatar_variante, papel_org, motivacao, stress_individual, antiguidade, necessidades, salario_mult")
+        .select("id, nome, arquetipo, avatar_variante, papel_org, motivacao, stress_individual, antiguidade, necessidades, salario_mult, entrou_ronda, promocoes, ultima_promocao_ronda, competencia, competencia_inicial")
         .eq("equipa_id", equipaId)
         .eq("ativo", true);
 

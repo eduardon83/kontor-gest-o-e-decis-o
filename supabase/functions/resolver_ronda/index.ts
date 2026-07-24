@@ -770,10 +770,14 @@ Deno.serve(async (req) => {
           salario_mult: cand.salario_mult,
           necessidades: { ambicao: cand.atributos.ambicao },
           ativo: true,
+          entrou_ronda: ronda.indice,
+          competencia_inicial: cand.atributos.competencia,
+          promocoes: 0,
         });
         trabDelta.trabalhadores += 1;
         b.auditoria.push({ acao: "contratacao", payload: { candidato_id: cand.id, salario_mult: cand.salario_mult } });
       }
+
 
       // Atualização de fatores (§9) — inclui bonus de moral por promoção.
       const dM = ((b.wageRatio >= 1.10 ? 6 : b.wageRatio >= 1.0 ? 1 : -8)

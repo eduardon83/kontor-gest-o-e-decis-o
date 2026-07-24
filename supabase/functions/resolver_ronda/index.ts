@@ -978,6 +978,8 @@ Deno.serve(async (req) => {
     if (auditoriaInsert.length) await sb.from("log_auditoria").insert(auditoriaInsert);
 
     // Posições por mercado.
+    const posicaoAtualPorEquipa = new Map<string, number>();
+    const totalPorMercado = new Map<string, number>();
     for (const [_mid, entradas] of apeloPorMercado) {
       const ranked = entradas
         .map((e) => ({
@@ -990,8 +992,65 @@ Deno.serve(async (req) => {
       for (let i = 0; i < ranked.length; i++) {
         await sb.from("resultados").update({ posicao: i + 1 })
           .eq("equipa_id", ranked[i].equipa_id).eq("ronda_id", ronda.id);
+        posicaoAtualPorEquipa.set(ranked[i].equipa_id, i + 1);
       }
+      for (const e of entradas) totalPorMercado.set(e.mercado_id, entradas.length);
     }
+
+    // ─── Crónica da Casa (determinística) ────────────────────────────────
+    const cronicaInsert: CronicaEntrada[] = [];
+    for (const b of buffer) {
+      const nomeEmpresa = equipasArr.find((e) => e.id === b.equipa_id)?.nome ?? "a casa";
+      const snapAtual = snapshotsInsert.find((s) => s.equipa_id === b.equipa_id)?.snapshot as any;
+      if (!snapAtual) continue;
+      const snapAnt = snapshotAnteriorPorEquipa.get(b.equipa_id) ?? null;
+      const valores = valoresPreviosPorEquipa.get(b.equipa_id) ?? [];
+      const cauda = (resultadosPreviosPorEquipa.get(b.equipa_id) ?? [0])[0] ?? 0;
+      const lucrosAnt = contadorLucrosPorEquipa.get(b.equipa_id) ?? 0;
+      const prejsAnt = contadorPrejuizosPorEquipa.get(b.equipa_id) ?? 0;
+      const meta = (colabsPorEquipa.get(b.equipa_id) ?? []).map((c: any) => ({
+        id: c.id, nome: c.nome, arquetipo: c.arquetipo, papel_org: c.papel_org,
+        entrou_ronda: c.entrou_ronda ?? null, antiguidade: c.antiguidade ?? null,
+      }));
+      const ctx: CronicaCtx = {
+        equipa_id: b.equipa_id, ronda_id: ronda.id, turno: ronda.indice, nomeEmpresa,
+        snapshotAtual: {
+          valor: Number(snapAtual.valor ?? 0),
+          resultado: Number(snapAtual.resultado ?? 0),
+          quota: Number(snapAtual.quota ?? 0),
+          caixa: Number(snapAtual.caixa ?? 0),
+          divida: Number(snapAtual.divida ?? 0),
+          marca: Number(snapAtual.marca ?? 0),
+          moral: Number(snapAtual.moral ?? 0),
+        },
+        snapshotAnterior: snapAnt ? {
+          valor: Number((snapAnt as any).valor ?? 0),
+          resultado: Number((snapAnt as any).resultado ?? 0),
+          quota: Number((snapAnt as any).quota ?? 0),
+          caixa: Number((snapAnt as any).caixa ?? 0),
+          divida: Number((snapAnt as any).divida ?? 0),
+          marca: Number((snapAnt as any).marca ?? 0),
+        } : null,
+        valoresPrevios: valores,
+        resultadosPrevios: [],
+        posicaoAtual: posicaoAtualPorEquipa.get(b.equipa_id) ?? null,
+        posicaoAnterior: posicaoAnteriorPorEquipa.get(b.equipa_id) ?? null,
+        totalEquipasMercado: totalPorMercado.get(b.mercado_id) ?? 0,
+        eventos: (snapAtual.eventos_lista as string[] | undefined) ?? (snapAtual.financeiro?.eventos ?? []),
+        auditoria: b.auditoria,
+        colabsMeta: meta,
+        primeiroLucro: lucrosAnt === 0 && Number(snapAtual.resultado ?? 0) > 0,
+        primeiroPrejuizo: prejsAnt === 0 && Number(snapAtual.resultado ?? 0) < 0,
+        regressoLucro: Number(snapAtual.resultado ?? 0) > 0 ? cauda : 0,
+      };
+      const entradas = gerarCronica(ctx);
+      for (const e of entradas) cronicaInsert.push(e);
+    }
+    if (cronicaInsert.length) {
+      const { error: eCr } = await sb.from("cronica_entradas").insert(cronicaInsert);
+      if (eCr) console.warn("[cronica_entradas]", eCr.message);
+    }
+
 
     await sb.from("rondas").update({ estado: "resolvida" }).eq("id", ronda.id);
     if (ronda.indice < comp.duracao_turnos) {

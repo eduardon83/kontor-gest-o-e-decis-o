@@ -26,6 +26,26 @@ function normalizaArq(a: string | null | undefined): Arquetipo {
   return (ARQUETIPOS as readonly string[]).includes(cap) ? (cap as Arquetipo) : "Esteio";
 }
 
+function narrativaColaborador(c: any, turnoAtual: number): string | null {
+  const entrou = typeof c.entrou_ronda === "number" ? c.entrou_ronda : null;
+  const promocoes = Number(c.promocoes ?? 0);
+  const ultimaProm = typeof c.ultima_promocao_ronda === "number" ? c.ultima_promocao_ronda : null;
+  const compAt = typeof c.competencia === "number" ? c.competencia : null;
+  const compIni = typeof c.competencia_inicial === "number" ? c.competencia_inicial : null;
+
+  const partes: string[] = [];
+  if (entrou == null || entrou <= 1) partes.push("na casa desde o turno 1");
+  else partes.push(`entrou no turno ${entrou}`);
+
+  if (promocoes === 0) partes.push("nunca foi promovido(a)");
+  else if (ultimaProm != null) partes.push(`última promoção no turno ${ultimaProm}`);
+
+  if (compIni != null && compAt != null && Math.abs(compAt - compIni) >= 0.05) {
+    partes.push(`competência de ${compIni.toFixed(2)} → ${compAt.toFixed(2)}`);
+  }
+  return partes.length ? partes.join(" · ") : null;
+}
+
 function opcoesPara(papel_org: string): { tipo: TipoAcaoPessoa; label: string }[] {
   switch (papel_org) {
     case "trabalhador":

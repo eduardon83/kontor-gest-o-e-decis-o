@@ -12,6 +12,7 @@
 //   CHRO: { salario:number, formacao:number, bonus:number,
 //           acoes_pessoas:[{colaborador_id,tipo}], contratacoes:[{candidato_id}] }
 import { admin, corsHeaders, json } from "../_shared/supabase.ts";
+import { gerarCronica, type CronicaCtx, type CronicaEntrada } from "../_shared/cronica.ts";
 import { clamp, stream } from "../_shared/prng.ts";
 import {
   CONST, PRECEDENCIA, PRODUTOS, TIERS, type Produto, type Tier,

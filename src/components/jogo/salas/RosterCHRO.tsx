@@ -154,12 +154,14 @@ function LinhaColaborador({
   pendente,
   onAplicar,
   onCancelar,
+  turnoAtual,
 }: {
   colaborador: any;
   editavel: boolean;
   pendente: AcaoPessoa | null;
   onAplicar: (a: AcaoPessoa) => void;
   onCancelar: () => void;
+  turnoAtual: number;
 }) {
   const [menuAberto, setMenuAberto] = useState(false);
   const [confirmar, setConfirmar] = useState<TipoAcaoPessoa | null>(null);
@@ -167,6 +169,8 @@ function LinhaColaborador({
 
   const arq = normalizaArq(colaborador.arquetipo);
   const variante = (colaborador.avatar_variante === 2 ? 2 : 1) as 1 | 2;
+
+  const historia = narrativaColaborador(colaborador, turnoAtual);
 
   return (
     <li className="relative flex items-center gap-3 rounded-sm border bg-background p-3">
@@ -181,6 +185,10 @@ function LinhaColaborador({
         <div className="mono truncate text-[10px] uppercase tracking-widest text-muted-foreground">
           {PAPEL_ROTULO[colaborador.papel_org] ?? colaborador.papel_org} · {fmtEur(salarioAtualMensal)}/mês
         </div>
+        {historia && (
+          <div className="mt-1 text-[11px] italic text-muted-foreground/90">{historia}</div>
+        )}
+
         <div className="mt-2 space-y-1">
           <Barra rotulo="Moral" valor={Math.round(Number(colaborador.motivacao))} />
           <Barra rotulo="Stress" valor={Math.round(Number(colaborador.stress_individual))} inverso />

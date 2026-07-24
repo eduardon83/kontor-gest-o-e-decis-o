@@ -716,6 +716,8 @@ Deno.serve(async (req) => {
           colabsUpdatesGlobal.push({ id: c.id, patch: {
             papel_org: "supervisor", salario_mult: 1.4,
             motivacao: clamp(Number(c.motivacao) + 5, 0, 100),
+            promocoes: Number(c.promocoes ?? 0) + 1,
+            ultima_promocao_ronda: ronda.indice,
           } });
           trabDelta.trabalhadores -= 1; trabDelta.supervisores += 1;
           promoNum++;
@@ -725,6 +727,8 @@ Deno.serve(async (req) => {
           colabsUpdatesGlobal.push({ id: c.id, patch: {
             papel_org: "gestor_linha", salario_mult: 2.0,
             motivacao: clamp(Number(c.motivacao) + 5, 0, 100),
+            promocoes: Number(c.promocoes ?? 0) + 1,
+            ultima_promocao_ronda: ronda.indice,
           } });
           trabDelta.supervisores -= 1; trabDelta.gestor_linha += 1;
           promoNum++;
@@ -734,11 +738,14 @@ Deno.serve(async (req) => {
           colabsUpdatesGlobal.push({ id: c.id, patch: {
             salario_mult: novoMult,
             motivacao: clamp(Number(c.motivacao) + 5, 0, 100),
+            promocoes: Number(c.promocoes ?? 0) + 1,
+            ultima_promocao_ronda: ronda.indice,
           } });
           promoNum++;
           b.auditoria.push({ acao: "promocao_merito", payload: { id: c.id, salario_mult: novoMult } });
         }
       }
+
 
       // Regenerar o pool determinístico para validar contratações.
       const pool = gerarPoolCandidatos({

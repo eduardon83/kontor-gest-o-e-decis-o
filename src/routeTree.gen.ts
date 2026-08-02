@@ -20,6 +20,7 @@ import { Route as AuthenticatedNovaHansaRouteImport } from './routes/_authentica
 import { Route as AuthenticatedPainelIndexRouteImport } from './routes/_authenticated/painel.index'
 import { Route as AuthenticatedPainelSuperAdminRouteImport } from './routes/_authenticated/painel.super-admin'
 import { Route as AuthenticatedPainelJogadorHomeRouteImport } from './routes/_authenticated/painel.jogador-home'
+import { Route as AuthenticatedPainelInformacoesRouteImport } from './routes/_authenticated/painel.informacoes'
 import { Route as AuthenticatedPainelAdminEscolarRouteImport } from './routes/_authenticated/painel.admin-escolar'
 import { Route as AuthenticatedPainelProfessorIndexRouteImport } from './routes/_authenticated/painel.professor.index'
 import { Route as AuthenticatedPainelJogadorIndexRouteImport } from './routes/_authenticated/painel.jogador.index'
@@ -85,6 +86,12 @@ const AuthenticatedPainelJogadorHomeRoute =
     path: '/painel/jogador-home',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPainelInformacoesRoute =
+  AuthenticatedPainelInformacoesRouteImport.update({
+    id: '/painel/informacoes',
+    path: '/painel/informacoes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedPainelAdminEscolarRoute =
   AuthenticatedPainelAdminEscolarRouteImport.update({
     id: '/painel/admin-escolar',
@@ -137,6 +144,7 @@ export interface FileRoutesByFullPath {
   '/auth/confirmado': typeof AuthConfirmadoRoute
   '/auth/': typeof AuthIndexRoute
   '/painel/admin-escolar': typeof AuthenticatedPainelAdminEscolarRoute
+  '/painel/informacoes': typeof AuthenticatedPainelInformacoesRoute
   '/painel/jogador-home': typeof AuthenticatedPainelJogadorHomeRoute
   '/painel/super-admin': typeof AuthenticatedPainelSuperAdminRoute
   '/painel/': typeof AuthenticatedPainelIndexRoute
@@ -156,6 +164,7 @@ export interface FileRoutesByTo {
   '/auth/confirmado': typeof AuthConfirmadoRoute
   '/auth': typeof AuthIndexRoute
   '/painel/admin-escolar': typeof AuthenticatedPainelAdminEscolarRoute
+  '/painel/informacoes': typeof AuthenticatedPainelInformacoesRoute
   '/painel/jogador-home': typeof AuthenticatedPainelJogadorHomeRoute
   '/painel/super-admin': typeof AuthenticatedPainelSuperAdminRoute
   '/painel': typeof AuthenticatedPainelIndexRoute
@@ -177,6 +186,7 @@ export interface FileRoutesById {
   '/auth/confirmado': typeof AuthConfirmadoRoute
   '/auth/': typeof AuthIndexRoute
   '/_authenticated/painel/admin-escolar': typeof AuthenticatedPainelAdminEscolarRoute
+  '/_authenticated/painel/informacoes': typeof AuthenticatedPainelInformacoesRoute
   '/_authenticated/painel/jogador-home': typeof AuthenticatedPainelJogadorHomeRoute
   '/_authenticated/painel/super-admin': typeof AuthenticatedPainelSuperAdminRoute
   '/_authenticated/painel/': typeof AuthenticatedPainelIndexRoute
@@ -198,6 +208,7 @@ export interface FileRouteTypes {
     | '/auth/confirmado'
     | '/auth/'
     | '/painel/admin-escolar'
+    | '/painel/informacoes'
     | '/painel/jogador-home'
     | '/painel/super-admin'
     | '/painel/'
@@ -217,6 +228,7 @@ export interface FileRouteTypes {
     | '/auth/confirmado'
     | '/auth'
     | '/painel/admin-escolar'
+    | '/painel/informacoes'
     | '/painel/jogador-home'
     | '/painel/super-admin'
     | '/painel'
@@ -237,6 +249,7 @@ export interface FileRouteTypes {
     | '/auth/confirmado'
     | '/auth/'
     | '/_authenticated/painel/admin-escolar'
+    | '/_authenticated/painel/informacoes'
     | '/_authenticated/painel/jogador-home'
     | '/_authenticated/painel/super-admin'
     | '/_authenticated/painel/'
@@ -338,6 +351,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPainelJogadorHomeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/painel/informacoes': {
+      id: '/_authenticated/painel/informacoes'
+      path: '/painel/informacoes'
+      fullPath: '/painel/informacoes'
+      preLoaderRoute: typeof AuthenticatedPainelInformacoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/painel/admin-escolar': {
       id: '/_authenticated/painel/admin-escolar'
       path: '/painel/admin-escolar'
@@ -393,6 +413,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedNovaHansaRoute: typeof AuthenticatedNovaHansaRoute
   AuthenticatedPainelAdminEscolarRoute: typeof AuthenticatedPainelAdminEscolarRoute
+  AuthenticatedPainelInformacoesRoute: typeof AuthenticatedPainelInformacoesRoute
   AuthenticatedPainelJogadorHomeRoute: typeof AuthenticatedPainelJogadorHomeRoute
   AuthenticatedPainelSuperAdminRoute: typeof AuthenticatedPainelSuperAdminRoute
   AuthenticatedPainelIndexRoute: typeof AuthenticatedPainelIndexRoute
@@ -406,6 +427,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedNovaHansaRoute: AuthenticatedNovaHansaRoute,
   AuthenticatedPainelAdminEscolarRoute: AuthenticatedPainelAdminEscolarRoute,
+  AuthenticatedPainelInformacoesRoute: AuthenticatedPainelInformacoesRoute,
   AuthenticatedPainelJogadorHomeRoute: AuthenticatedPainelJogadorHomeRoute,
   AuthenticatedPainelSuperAdminRoute: AuthenticatedPainelSuperAdminRoute,
   AuthenticatedPainelIndexRoute: AuthenticatedPainelIndexRoute,
@@ -436,3 +458,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

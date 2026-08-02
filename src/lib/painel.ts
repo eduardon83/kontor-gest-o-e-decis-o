@@ -28,17 +28,20 @@ export const MENU_POR_PAPEL: Record<Papel, LinkMenu[]> = {
     { to: "/painel/professor", label: "As minhas Hansas" },
     { to: "/nova-hansa", label: "Criar Hansa", destaque: true },
     { to: "/painel/jogador", label: "Ver demo" },
+    { to: "/painel/informacoes", label: "Informações" },
   ],
   admin_escolar: [
     { to: "/painel/admin-escolar", label: "Instituição" },
     { to: "/painel/professor", label: "As minhas Hansas" },
     { to: "/nova-hansa", label: "Criar Hansa", destaque: true },
     { to: "/painel/jogador", label: "Ver demo" },
+    { to: "/painel/informacoes", label: "Informações" },
   ],
   professor: [
     { to: "/painel/professor", label: "As minhas Hansas" },
     { to: "/nova-hansa", label: "Criar Hansa", destaque: true },
     { to: "/painel/jogador", label: "Ver demo jogável" },
+    { to: "/painel/informacoes", label: "Informações" },
   ],
   jogador: [
     { to: "/painel/jogador-home", label: "Início" },

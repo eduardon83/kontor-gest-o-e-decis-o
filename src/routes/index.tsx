@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { LogoKontor } from "@/components/marca/LogoKontor";
+import { useTextos } from "@/lib/textos/useTextos";
 
 export const Route = createFileRoute("/")({
   component: Landing,
 });
 
 function Landing() {
+  const t = useTextos(null);
   return (
     <div className="min-h-screen bg-paper text-foreground">
       {/* HERO */}
@@ -41,15 +43,13 @@ function Landing() {
             <LogoKontor size={128} cor="gold" />
           </div>
           <p className="font-mono text-xs uppercase tracking-[0.28em] text-gold">
-            Ensino superior · Gestão · Simulação
+            {t("interface.landing.tag")}
           </p>
           <h1 className="mt-6 max-w-3xl font-serif text-4xl leading-[1.05] text-paper md:text-6xl">
-            A gestão de uma empresa, aprendida a decidir.
+            {t("interface.landing.titulo")}
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-relaxed text-paper/80 md:text-lg">
-            Em equipa, cada aluno assume uma pasta executiva e gere uma empresa num mercado vivo e
-            único a cada jogo. Decidem juntos, semana após semana, e o mercado responde. Vence quem
-            criar mais valor.
+            {t("interface.landing.subtitulo")}
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
             <Link

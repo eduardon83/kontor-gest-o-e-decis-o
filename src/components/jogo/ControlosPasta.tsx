@@ -6,14 +6,15 @@ import { TotalComprometidoCompacto } from "./PainelCustosComprometidos";
 import type { Lugar } from "@/lib/jogo/tipos";
 import { capacidadeCOO, tierEfetivo, MAO_MULT, type Tier, type Ritmo } from "@/lib/jogo/capacidade";
 import { ID_NOS } from "@/lib/jogo/id-arvore";
+import { useTextos } from "@/lib/textos/useTextos";
 
 
 
-const POSTURAS: { valor: string; titulo: string; descricao: string }[] = [
-  { valor: "Crescimento", titulo: "Crescimento", descricao: "Prioriza a expansão de vendas e capacidade produtiva." },
-  { valor: "Rentabilidade", titulo: "Rentabilidade", descricao: "Foca a margem e a geração de caixa." },
-  { valor: "Quota", titulo: "Quota", descricao: "Ganhar mercado mesmo com margem menor." },
-  { valor: "Equilibrio", titulo: "Equilíbrio", descricao: "Mistura crescimento, margem e prudência." },
+const POSTURAS: { valor: string; titulo: string }[] = [
+  { valor: "Crescimento", titulo: "Crescimento" },
+  { valor: "Rentabilidade", titulo: "Rentabilidade" },
+  { valor: "Quota", titulo: "Quota" },
+  { valor: "Equilibrio", titulo: "Equilíbrio" },
 ];
 
 /* Payload canónico (schema-decisoes.ts). Aqui apenas os campos essenciais que a UI edita. */
@@ -27,7 +28,8 @@ const INICIAL: Record<Lugar, Record<string, unknown>> = {
 
 
 export function ControlosPasta({ lugar }: { lugar: Lugar }) {
-  const { podeEditar, submetidos, submeterLugar, decisoes, atualizarRascunho, rascunho, guardarNomeEmpresa, nomeEmpresa, snapshotAtual } = useJogo();
+  const { podeEditar, submetidos, submeterLugar, decisoes, atualizarRascunho, rascunho, guardarNomeEmpresa, nomeEmpresa, snapshotAtual, competicao_id } = useJogo() as any;
+  const t = useTextos(competicao_id);
   const editavel = podeEditar(lugar);
   const submetido = submetidos[lugar];
 
@@ -90,7 +92,7 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
                       }`}
                     >
                       <div className="font-serif text-sm">{p.titulo}</div>
-                      <div className="text-[11px] leading-snug text-muted-foreground">{p.descricao}</div>
+                      <div className="text-[11px] leading-snug text-muted-foreground">{t(`interface.postura.${p.valor}`)}</div>
                     </button>
                   );
                 })}
@@ -126,9 +128,9 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
               rotulo="Tier"
               v={valor.tier}
               opcoes={[
-                { valor: "standard", titulo: "Standard", descricao: "Sem I&D. Custo base." },
-                { valor: "fine", titulo: "Fine", descricao: "Requer FINE. +58% mão-de-obra, melhor qualidade." },
-                { valor: "artisan", titulo: "Artisan", descricao: "Requer ARTISAN. +110% mão-de-obra, top qualidade." },
+                { valor: "standard", titulo: "Standard", descricao: t("interface.tier.standard") },
+                { valor: "fine", titulo: "Fine", descricao: t("interface.tier.fine") },
+                { valor: "artisan", titulo: "Artisan", descricao: t("interface.tier.artisan") },
               ]}
               onChange={(o) => up({ tier: o })}
               disabled={!editavel}
@@ -143,10 +145,10 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
               rotulo="Ritmo"
               v={valor.ritmo}
               opcoes={[
-                { valor: "ferias", titulo: "Férias", descricao: "Reinicia o stress mas produz ~0 no turno." },
-                { valor: "folga", titulo: "Folga", descricao: "Alivia stress; reduz capacidade." },
-                { valor: "normal", titulo: "Normal", descricao: "Ritmo base (160 h/trabalhador)." },
-                { valor: "horas_extra", titulo: "Horas extra", descricao: "+40 h/trabalhador; mão-de-obra a 1,5×; +stress." },
+                { valor: "ferias", titulo: "Férias", descricao: t("interface.ritmo.ferias") },
+                { valor: "folga", titulo: "Folga", descricao: t("interface.ritmo.folga") },
+                { valor: "normal", titulo: "Normal", descricao: t("interface.ritmo.normal") },
+                { valor: "horas_extra", titulo: "Horas extra", descricao: t("interface.ritmo.horas_extra") },
               ]}
               onChange={(o) => up({ ritmo: o })}
               disabled={!editavel}
@@ -156,8 +158,8 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
               rotulo="Modo I&D"
               v={valor.id_modo}
               opcoes={[
-                { valor: "interno", titulo: "Interno", descricao: "Investigadores desenvolvem ao longo dos turnos (custo = salário dos investigadores)." },
-                { valor: "licenca", titulo: "Licença", descricao: "Pagamento único de €45.000 — desbloqueia já a tecnologia." },
+                { valor: "interno", titulo: "Interno", descricao: t("interface.id.interno") },
+                { valor: "licenca", titulo: "Licença", descricao: t("interface.id.licenca") },
               ]}
               onChange={(o) => up({ id_modo: o })}
               disabled={!editavel}
@@ -201,9 +203,9 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
               rotulo="Canal"
               v={valor.canal}
               opcoes={[
-                { valor: "grosso", titulo: "Grosso", descricao: "Preço realizado ×0,85, +10% alcance — mais volume a margem menor." },
-                { valor: "direto", titulo: "Direto", descricao: "Preço ×1,00, marca +2/turno, −10% alcance; marketing rende ×1,15." },
-                { valor: "exportacao", titulo: "Exportação", descricao: "Preço ×0,72; abre procura externa adicional." },
+                { valor: "grosso", titulo: "Grosso", descricao: t("interface.canal.grosso") },
+                { valor: "direto", titulo: "Direto", descricao: t("interface.canal.direto") },
+                { valor: "exportacao", titulo: "Exportação", descricao: t("interface.canal.exportacao") },
               ]}
               onChange={(o) => up({ canal: o })}
               disabled={!editavel}

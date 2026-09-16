@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { BOARD } from "@/lib/jogo/dados-exemplo";
+import { useTextos } from "@/lib/textos/useTextos";
 import { useJogo } from "../JogoContext";
 import { listarCronica, listarAtas } from "@/lib/cronica.functions";
 

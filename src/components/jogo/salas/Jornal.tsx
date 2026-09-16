@@ -1,5 +1,6 @@
 import { JORNAL } from "@/lib/jogo/dados-exemplo";
 import { useJogo } from "../JogoContext";
+import { useTextos } from "@/lib/textos/useTextos";
 import { fmtEUR, financeiroDo } from "../RelatorioFinanceiro";
 import {
   manchetePrincipal, noticiasEconomia, colunaOpiniao,
@@ -13,7 +14,8 @@ const CORES_ESTADO = {
 } as const;
 
 export function Jornal() {
-  const { modo, snapshotAtual, snapshots, rivais, competicao_nome, equipa_nome, ronda_indice, setSala, decisoes } = useJogo() as any;
+  const { modo, snapshotAtual, snapshots, rivais, competicao_nome, equipa_nome, ronda_indice, setSala, decisoes, competicao_id } = useJogo() as any;
+  const t = useTextos(competicao_id);
   const fin = financeiroDo(snapshotAtual);
   const turnoFin = Number((snapshotAtual as any)?.turno ?? 0);
 

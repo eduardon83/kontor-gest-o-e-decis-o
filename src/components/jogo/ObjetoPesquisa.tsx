@@ -3,6 +3,7 @@ import { Info, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { useJogo } from "./JogoContext";
 import { ResultadoPesquisa } from "./ResultadoPesquisa";
 import type { Lugar } from "@/lib/jogo/tipos";
+import { useTextos } from "@/lib/textos/useTextos";
 
 /* ============================================================
  * Metadados por lugar — título, explicação e tipo enviado ao backend.
@@ -82,7 +83,8 @@ function fmtEur(v: number | null | undefined): string {
  * Componente principal
  * ============================================================ */
 export function ObjetoPesquisa({ lugar }: { lugar: Lugar }) {
-  const { pesquisas, usarPesquisa, pesquisaUsada, podeEditar, chro_representante_id, colaboradores } = useJogo();
+  const { pesquisas, usarPesquisa, pesquisaUsada, podeEditar, chro_representante_id, colaboradores, competicao_id } = useJogo() as any;
+  const t = useTextos(competicao_id);
   const meta = META[lugar];
   const lista = pesquisas[lugar] ?? [];
   const editavel = podeEditar(lugar);
@@ -231,7 +233,7 @@ export function ObjetoPesquisa({ lugar }: { lugar: Lugar }) {
           <h3 className="mt-0.5 font-serif text-xl leading-tight">{meta.tituloPainel}</h3>
           <p className="mt-1.5 flex items-start gap-1.5 text-sm text-muted-foreground">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gold" />
-            <span>{meta.descricao}</span>
+            <span>{t(`interface.pesquisa.${lugar}`) || meta.descricao}</span>
           </p>
         </div>
       </header>

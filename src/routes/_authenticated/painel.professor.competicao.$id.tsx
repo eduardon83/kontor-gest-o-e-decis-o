@@ -13,6 +13,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
+import { EditorTextos } from "@/components/painel/EditorTextos";
 
 
 export const Route = createFileRoute("/_authenticated/painel/professor/competicao/$id")({
@@ -178,7 +179,23 @@ function Pagina() {
         <MercadoBloco key={mercado.id} mercado={mercado} dados={dados} visao="professor" />
       ))}
 
+      {/* Textos desta Hansa */}
+      <section className="mt-10 rounded-lg border border-border bg-card p-5">
+        <h2 className="font-serif text-lg">Textos desta Hansa</h2>
+        <p className="mt-1 mb-4 text-sm text-muted-foreground">
+          Personalize a missão da Administração e a voz da crónica e do jornal só para esta Hansa.
+          Onde não houver texto próprio, valem os textos originais do Kontor.
+        </p>
+        <EditorTextos
+          escopo="competicao"
+          competicao_id={id}
+          rotuloEscopo={`só para esta Hansa (${dados?.competicao?.nome ?? "—"})`}
+          categorias={["board", "cronica", "jornal"]}
+        />
+      </section>
+
       {/* Zona de perigo */}
+
       <section className="mt-10 rounded-lg border border-destructive/40 bg-destructive/5 p-5">
         <h2 className="font-serif text-lg text-destructive">Zona de perigo</h2>
         <p className="mt-1 text-sm text-muted-foreground">

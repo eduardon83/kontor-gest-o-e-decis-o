@@ -13,6 +13,8 @@
 //           acoes_pessoas:[{colaborador_id,tipo}], contratacoes:[{candidato_id}] }
 import { admin, corsHeaders, json } from "../_shared/supabase.ts";
 import { gerarCronica, type CronicaCtx, type CronicaEntrada } from "../_shared/cronica.ts";
+import { carregarTextos } from "../_shared/textos.ts";
+
 import { clamp, stream } from "../_shared/prng.ts";
 import {
   CONST, PRECEDENCIA, PRODUTOS, TIERS, type Produto, type Tier,
@@ -60,8 +62,9 @@ Deno.serve(async (req) => {
     if (ronda.estado === "resolvida") return json({ ok: true, ja_resolvida: true });
 
     const { data: comp } = await sb.from("competicoes")
-      .select("id, seed, duracao_turnos, params, politica_ausente").eq("id", ronda.competicao_id).maybeSingle();
+      .select("id, seed, duracao_turnos, params, politica_ausente, instituicao_id").eq("id", ronda.competicao_id).maybeSingle();
     if (!comp) throw new Error("competição não encontrada");
+
 
     const { data: econRow } = await sb.from("economia_seed")
       .select("dados").eq("competicao_id", ronda.competicao_id).maybeSingle();
@@ -999,6 +1002,11 @@ Deno.serve(async (req) => {
 
     // ─── Crónica da Casa (determinística) ────────────────────────────────
     const cronicaInsert: CronicaEntrada[] = [];
+    const textosCronica = await carregarTextos(sb, {
+      competicao_id: comp.id,
+      instituicao_id: (comp as { instituicao_id?: string | null }).instituicao_id ?? null,
+    });
+
     for (const b of buffer) {
       const nomeEmpresa = equipasArr.find((e) => e.id === b.equipa_id)?.nome ?? "a casa";
       const snapAtual = snapshotsInsert.find((s) => s.equipa_id === b.equipa_id)?.snapshot as any;
@@ -1043,7 +1051,7 @@ Deno.serve(async (req) => {
         primeiroPrejuizo: prejsAnt === 0 && Number(snapAtual.resultado ?? 0) < 0,
         regressoLucro: Number(snapAtual.resultado ?? 0) > 0 ? cauda : 0,
       };
-      const entradas = gerarCronica(ctx);
+      const entradas = gerarCronica(ctx, textosCronica);
       for (const e of entradas) cronicaInsert.push(e);
     }
     if (cronicaInsert.length) {

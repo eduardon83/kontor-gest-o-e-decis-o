@@ -220,22 +220,24 @@ export function Jornal() {
 
       {emReal && (() => {
         const snapAnt = snapshots.length >= 2 ? snapshots[snapshots.length - 2].snapshot : null;
+        const turno = turnoUltimo || ronda_indice;
         const manchete = manchetePrincipal({
           rivaisAtuais: rivais ?? [], rivaisAnteriores: [],
           snapshotAtual, snapshotAnterior: snapAnt,
-          competicao_nome, equipa_nome, turno: turnoUltimo || ronda_indice,
+          competicao_nome, equipa_nome, turno, t,
         });
-        const macroNoticias = noticiasEconomia({ macroAtual, macroAnterior, faseEcon });
+        const macroNoticias = noticiasEconomia({ macroAtual, macroAnterior, faseEcon, turno, t });
         const opiniao = colunaOpiniao({
           rivaisAtuais: rivais ?? [], rivaisAnteriores: [],
-          snapshotAtual, snapshotAnterior: snapAnt, turno: turnoUltimo || ronda_indice,
+          snapshotAtual, snapshotAnterior: snapAnt, turno, t,
         });
         const anuncios = anunciosDasCasas({
           rivaisAtuais: rivais ?? [], rivaisAnteriores: [],
-          snapshotAtual, decisoes: decisoes ?? {}, equipa_nome,
+          snapshotAtual, decisoes: decisoes ?? {}, equipa_nome, turno, t,
         });
-        const cartas = cartasAoDiretor(notas as any);
-        const necros = necrologia({ rivaisAtuais: rivais ?? [], rivaisAnteriores: [] });
+        const cartas = cartasAoDiretor(notas as any, { turno, t });
+        const necros = necrologia({ rivaisAtuais: rivais ?? [], rivaisAnteriores: [], turno, t });
+
 
         return (
           <section className="grid gap-6 lg:grid-cols-3">

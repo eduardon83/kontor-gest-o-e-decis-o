@@ -9,11 +9,11 @@ import { ID_NOS } from "@/lib/jogo/id-arvore";
 
 
 
-const POSTURAS: { valor: string; titulo: string; descricao: string }[] = [
-  { valor: "Crescimento", titulo: "Crescimento", descricao: "Prioriza a expansão de vendas e capacidade produtiva." },
-  { valor: "Rentabilidade", titulo: "Rentabilidade", descricao: "Foca a margem e a geração de caixa." },
-  { valor: "Quota", titulo: "Quota", descricao: "Ganhar mercado mesmo com margem menor." },
-  { valor: "Equilibrio", titulo: "Equilíbrio", descricao: "Mistura crescimento, margem e prudência." },
+const POSTURAS: { valor: string; titulo: string }[] = [
+  { valor: "Crescimento", titulo: "Crescimento" },
+  { valor: "Rentabilidade", titulo: "Rentabilidade" },
+  { valor: "Quota", titulo: "Quota" },
+  { valor: "Equilibrio", titulo: "Equilíbrio" },
 ];
 
 /* Payload canónico (schema-decisoes.ts). Aqui apenas os campos essenciais que a UI edita. */

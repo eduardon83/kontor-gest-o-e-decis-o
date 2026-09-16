@@ -83,8 +83,9 @@ function fmtEur(v: number | null | undefined): string {
  * Componente principal
  * ============================================================ */
 export function ObjetoPesquisa({ lugar }: { lugar: Lugar }) {
-  const { pesquisas, usarPesquisa, pesquisaUsada, podeEditar, chro_representante_id, colaboradores, competicao_id } = useJogo() as any;
-  const t = useTextos(competicao_id);
+  const jogo = useJogo();
+  const { pesquisas, usarPesquisa, pesquisaUsada, podeEditar, chro_representante_id, colaboradores } = jogo;
+  const t = useTextos((jogo as { competicao_id?: string | null }).competicao_id ?? null);
   const meta = META[lugar];
   const lista = pesquisas[lugar] ?? [];
   const editavel = podeEditar(lugar);

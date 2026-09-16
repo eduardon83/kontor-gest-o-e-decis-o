@@ -22,6 +22,7 @@ import { TemaProvider, useTema } from "@/components/tema/TemaProvider";
 import type { Tema, TemaSlots, TemaTokens } from "@/lib/tema/tipos";
 import { ConvitesPapel } from "@/components/painel/ConvitesPapel";
 import { PedidosDocente } from "@/components/painel/PedidosDocente";
+import { EditorTextos } from "@/components/painel/EditorTextos";
 
 export const Route = createFileRoute("/_authenticated/painel/super-admin")({
   component: Pagina,
@@ -32,14 +33,15 @@ type Comp = { id: string; nome: string; industria: string; instituicao_id: strin
 type Log = { id: string; acao: string; alvo: string | null; payload: any; ts: string; ator_user_id: string | null };
 
 function Pagina() {
-  const [aba, setAba] = useState<"instituicoes" | "convites" | "tema" | "auditoria">("instituicoes");
+  const [aba, setAba] = useState<"instituicoes" | "convites" | "tema" | "textos" | "auditoria">("instituicoes");
   return (
-    <PainelShell papel="super_admin" titulo="Gestão global do Kontor" descricao="Instituições, temas, indústria e auditoria.">
+    <PainelShell papel="super_admin" titulo="Gestão global do Kontor" descricao="Instituições, temas, textos, indústria e auditoria.">
       <div className="mb-6 flex gap-2 border-b border-border">
         {[
           ["instituicoes", "Instituições"],
           ["convites", "Convites"],
           ["tema", "Temas"],
+          ["textos", "Textos"],
           ["auditoria", "Auditoria"],
         ].map(([k, l]) => (
           <button
@@ -56,10 +58,78 @@ function Pagina() {
       {aba === "instituicoes" && <AbaInstituicoes />}
       {aba === "convites" && <AbaConvites />}
       {aba === "tema" && <AbaTema />}
+      {aba === "textos" && <AbaTextos />}
       {aba === "auditoria" && <AbaAuditoria />}
     </PainelShell>
   );
 }
+
+function AbaTextos() {
+  const listarInst = useServerFn(listarInstituicoes);
+  const listarComp = useServerFn(listarCompeticoesSuperAdmin);
+  const [insts, setInsts] = useState<Instituicao[]>([]);
+  const [comps, setComps] = useState<Comp[]>([]);
+  const [escopo, setEscopo] = useState<"global" | "instituicao" | "competicao">("global");
+  const [alvo, setAlvo] = useState<string>("");
+
+  useEffect(() => {
+    (async () => {
+      try { setInsts((await listarInst()) as Instituicao[]); } catch {}
+      try { setComps((await listarComp()) as Comp[]); } catch {}
+    })();
+  }, []);
+
+  const rotulo =
+    escopo === "global"
+      ? "o texto global (vale para todo o Kontor)"
+      : escopo === "instituicao"
+        ? `só para a instituição ${insts.find((i) => i.id === alvo)?.nome ?? "—"}`
+        : `só para a competição ${comps.find((c) => c.id === alvo)?.nome ?? "—"}`;
+
+  const pronto = escopo === "global" || Boolean(alvo);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-3">
+        <select
+          className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+          value={escopo}
+          onChange={(e) => { setEscopo(e.target.value as any); setAlvo(""); }}
+        >
+          <option value="global">Texto global</option>
+          <option value="instituicao">Texto por instituição</option>
+          <option value="competicao">Texto por competição</option>
+        </select>
+        {escopo !== "global" && (
+          <select
+            className="min-w-[280px] rounded-md border border-border bg-background px-3 py-2 text-sm"
+            value={alvo}
+            onChange={(e) => setAlvo(e.target.value)}
+          >
+            <option value="">— escolher —</option>
+            {escopo === "instituicao"
+              ? insts.map((i) => <option key={i.id} value={i.id}>{i.nome}</option>)
+              : comps.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+        )}
+      </div>
+      {pronto ? (
+        <EditorTextos
+          key={`${escopo}:${alvo}`}
+          escopo={escopo}
+          instituicao_id={escopo === "instituicao" ? alvo : null}
+          competicao_id={escopo === "competicao" ? alvo : null}
+          rotuloEscopo={rotulo}
+        />
+      ) : (
+        <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+          Escolha a instituição ou competição a personalizar.
+        </p>
+      )}
+    </div>
+  );
+}
+
 
 function AbaConvites() {
   const listar = useServerFn(listarInstituicoes);

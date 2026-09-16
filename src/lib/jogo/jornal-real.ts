@@ -1,9 +1,14 @@
 // Geradores determinísticos do Jornal em modo real.
-// Regra: poucos moldes bem escritos, com variação por dados. PT-PT.
-// Nada de texto genérico repetido turno após turno.
+// Os textos vêm dos moldes editáveis (cascata competição → instituição → global),
+// com os defaults do catálogo como fallback final. PT-PT.
 
 import type { Rival, Snapshot, SnapshotRegisto, DecisaoRegisto } from "@/components/jogo/JogoContext";
 import type { Lugar } from "@/lib/jogo/tipos";
+import { criarFuncaoTexto, type FuncaoTexto } from "@/lib/textos/render";
+import { DEFAULTS_TEXTO } from "@/lib/textos/catalogo";
+
+/** Função de texto por omissão: só defaults do código. */
+const T_DEFAULT: FuncaoTexto = criarFuncaoTexto({}, DEFAULTS_TEXTO);
 
 export type Manchete = { tag: string; titulo: string; sub?: string };
 export type Anuncio = { casa: string; tamanho: "grande" | "media" | "pequena"; titulo: string; corpo: string };
@@ -30,19 +35,20 @@ export function manchetePrincipal(args: {
   competicao_nome: string;
   equipa_nome: string;
   turno: number;
+  t?: FuncaoTexto;
 }): Manchete {
   const { rivaisAtuais, rivaisAnteriores, snapshotAtual, competicao_nome, equipa_nome, turno } = args;
+  const t = args.t ?? T_DEFAULT;
+  const seed = `jornal:${competicao_nome}:${turno}`;
 
   // Falências (valor ≤ 0)
   const falidos = rivaisAtuais.filter((r) => r.valor <= 0);
   if (falidos.length) {
-    const nomes = falidos.map((f) => f.nome).join(" e ");
+    const vars = { turno, nomes: falidos.map((f) => f.nome).join(" e "), n: falidos.length, competicao: competicao_nome };
     return {
       tag: "Falência",
-      titulo: falidos.length === 1
-        ? `Casa ${nomes} colapsa na praça`
-        : `Duas casas colapsam: ${nomes}`,
-      sub: `A praça de ${competicao_nome} regista o fecho no turno ${turno}.`,
+      titulo: t("jornal.manchete.falencia.titulo", vars, seed),
+      sub: t("jornal.manchete.falencia.sub", vars, seed),
     };
   }
 
@@ -55,17 +61,12 @@ export function manchetePrincipal(args: {
     variacoes.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
     const top = variacoes[0];
     if (top && Math.abs(top.delta) >= 5000) {
-      if (top.delta > 0) {
-        return {
-          tag: "Movimento",
-          titulo: `${top.r.nome} dispara ${eur(top.delta)} em valor`,
-          sub: `Passa a valer ${eur(top.r.valor)} — a maior subida do turno.`,
-        };
-      }
+      const chave = top.delta > 0 ? "subida" : "queda";
+      const vars = { turno, rival: top.r.nome, valor: eur(top.r.valor), delta: eur(Math.abs(top.delta)) };
       return {
-        tag: "Queda",
-        titulo: `${top.r.nome} perde ${eur(Math.abs(top.delta))} em valor`,
-        sub: `Recua para ${eur(top.r.valor)} — a maior queda do turno.`,
+        tag: top.delta > 0 ? "Movimento" : "Queda",
+        titulo: t(`jornal.manchete.${chave}.titulo`, vars, seed),
+        sub: t(`jornal.manchete.${chave}.sub`, vars, seed),
       };
     }
   }
@@ -74,31 +75,37 @@ export function manchetePrincipal(args: {
   if (rivaisAtuais.length >= 2) {
     const ord = [...rivaisAtuais].sort((a, b) => b.valor - a.valor);
     const folga = ord[0].valor - ord[1].valor;
+    const vars = {
+      turno,
+      lider: ord[0].nome,
+      segundo: ord[1].nome,
+      valor: eur(ord[0].valor),
+      folga: eur(folga),
+    };
     if (folga > ord[1].valor * 0.35) {
       return {
         tag: "Liderança",
-        titulo: `${ord[0].nome} destaca-se e lidera a praça`,
-        sub: `Vale ${eur(ord[0].valor)}, distância ${eur(folga)} sobre ${ord[1].nome}.`,
+        titulo: t("jornal.manchete.lideranca.titulo", vars, seed),
+        sub: t("jornal.manchete.lideranca.sub", vars, seed),
       };
     }
     return {
       tag: "Praça",
-      titulo: `${ord[0].nome} à cabeça, ${ord[1].nome} a curta distância`,
-      sub: `Diferença de apenas ${eur(folga)} entre as duas primeiras casas.`,
+      titulo: t("jornal.manchete.praca.titulo", vars, seed),
+      sub: t("jornal.manchete.praca.sub", vars, seed),
     };
   }
 
   // Fallback com dados da equipa
   const rl = Number((snapshotAtual as any)?.financeiro?.pnl?.resultado_liquido ?? 0);
   if (Math.abs(rl) >= 1) {
+    const vars = { turno, equipa: equipa_nome, resultado: eur(Math.abs(rl)) };
     return {
       tag: "Resultados",
-      titulo: rl >= 0
-        ? `${equipa_nome} fecha turno com lucro de ${eur(rl)}`
-        : `${equipa_nome} apura prejuízo de ${eur(Math.abs(rl))}`,
+      titulo: t(`jornal.manchete.${rl >= 0 ? "lucro" : "prejuizo"}.titulo`, vars, seed),
     };
   }
-  return { tag: competicao_nome, titulo: `Turno ${turno} sem eventos de mercado dignos de manchete` };
+  return { tag: competicao_nome, titulo: t("jornal.manchete.sem_eventos.titulo", { turno }, seed) };
 }
 
 /* ============================================================
@@ -108,40 +115,62 @@ export function noticiasEconomia(args: {
   macroAtual: any;
   macroAnterior: any;
   faseEcon: string | null;
+  turno?: number;
+  t?: FuncaoTexto;
 }): Manchete[] {
   const { macroAtual, macroAnterior, faseEcon } = args;
+  const t = args.t ?? T_DEFAULT;
+  const seed = `economia:${args.turno ?? 0}`;
   const out: Manchete[] = [];
-  if (faseEcon) out.push({ tag: "Ciclo", titulo: `Fase macroeconómica: ${faseEcon}` });
+  if (faseEcon) out.push({ tag: "Ciclo", titulo: t("jornal.economia.ciclo", { fase: faseEcon }, seed) });
   if (macroAtual) {
     const dJuro = macroAnterior ? macroAtual.juro - macroAnterior.juro : 0;
     if (Math.abs(dJuro) >= 0.25) {
+      const vars = {
+        direcao: dJuro > 0 ? "sobe" : "desce",
+        juro: macroAtual.juro.toFixed(2),
+        delta: Math.abs(dJuro).toFixed(2),
+        sinal: dJuro > 0 ? "+" : "−",
+      };
       out.push({
         tag: "Política monetária",
-        titulo: `Juro base ${dJuro > 0 ? "sobe" : "desce"} para ${macroAtual.juro.toFixed(2)}%`,
-        sub: `Variação de ${dJuro > 0 ? "+" : "−"}${Math.abs(dJuro).toFixed(2)} pontos.`,
+        titulo: t("jornal.economia.juro_variacao", vars, seed),
+        sub: t("jornal.economia.juro_variacao.sub", vars, seed),
       });
     } else {
-      out.push({ tag: "Política monetária", titulo: `Juro base estável em ${macroAtual.juro.toFixed(2)}%` });
+      out.push({
+        tag: "Política monetária",
+        titulo: t("jornal.economia.juro_estavel", { juro: macroAtual.juro.toFixed(2) }, seed),
+      });
     }
     const dInf = macroAnterior ? macroAtual.inflacao - macroAnterior.inflacao : 0;
     out.push({
       tag: "Preços",
-      titulo: `Inflação ${dInf > 0 ? "acelera" : dInf < 0 ? "abranda" : "mantém-se"} em ${macroAtual.inflacao.toFixed(1)}%`,
+      titulo: t(
+        "jornal.economia.inflacao",
+        {
+          direcao: dInf > 0 ? "acelera" : dInf < 0 ? "abranda" : "mantém-se",
+          inflacao: macroAtual.inflacao.toFixed(1),
+        },
+        seed,
+      ),
     });
     out.push({
       tag: "Confiança",
-      titulo: `Índice de confiança em ${Math.round(macroAtual.confianca)}`,
-      sub: `Crescimento ${(macroAtual.crescimento * 100 - 100).toFixed(1)}%.`,
+      titulo: t("jornal.economia.confianca", { confianca: Math.round(macroAtual.confianca) }, seed),
+      sub: t(
+        "jornal.economia.confianca.sub",
+        { crescimento: (macroAtual.crescimento * 100 - 100).toFixed(1) },
+        seed,
+      ),
     });
   }
   return out;
 }
 
 /* ============================================================
- * COLUNA DE OPINIÃO — "Fradique da Praça", tom seco e irónico
+ * COLUNA DE OPINIÃO — voz própria e recorrente, tom seco e irónico
  * ============================================================ */
-const COLUNISTA = "Fradique da Praça";
-
 function hhi(rivais: Rival[]): number {
   const total = rivais.reduce((s, r) => s + Math.max(0, r.valor), 0);
   if (total <= 0) return 0;
@@ -157,8 +186,17 @@ export function colunaOpiniao(args: {
   snapshotAtual: Snapshot | null;
   snapshotAnterior: Snapshot | null;
   turno: number;
+  t?: FuncaoTexto;
 }): { autor: string; titulo: string; corpo: string } | null {
   const { rivaisAtuais, rivaisAnteriores, snapshotAtual, snapshotAnterior, turno } = args;
+  const t = args.t ?? T_DEFAULT;
+  const seed = `opiniao:${turno}`;
+  const autor = t("jornal.opiniao.autor", {}, seed);
+  const angulo = (chave: string, vars: Record<string, string | number>) => ({
+    autor,
+    titulo: t(`jornal.opiniao.${chave}.titulo`, vars, seed),
+    corpo: t(`jornal.opiniao.${chave}.corpo`, vars, seed),
+  });
 
   // Sinal 1: concentração de quota (HHI)
   const conc = hhi(rivaisAtuais);
@@ -188,64 +226,14 @@ export function colunaOpiniao(args: {
   const dTier = mediaTier(tiersAt) - mediaTier(tiersAnt);
 
   // Escolher UM ângulo dominante
-  if (conc >= 4500) {
-    return {
-      autor: COLUNISTA,
-      titulo: "O tabuleiro está a ficar pequeno",
-      corpo:
-        `Diz-se pela praça que a concorrência é saudável. Neste turno ${turno}, a concentração de quota fala por si — ` +
-        `poucos nomes, muita margem, e um índice de dominância a rondar os ${Math.round(conc)}. ` +
-        `Quem vive à sombra dos gigantes que se cubra: a próxima geada não perdoa os pequenos.`,
-    };
-  }
-  if (dConc <= -400) {
-    return {
-      autor: COLUNISTA,
-      titulo: "A praça fragmenta-se",
-      corpo:
-        `Ao contrário do turno anterior, ninguém se destaca de forma insolente. ` +
-        `A concentração cede ${Math.round(Math.abs(dConc))} pontos e há espaço para todos os cotovelos. ` +
-        `É costume dizer-se que mercados abertos convidam a estratégias tímidas — este colunista discorda.`,
-    };
-  }
-  if (dPreco < -3) {
-    return {
-      autor: COLUNISTA,
-      titulo: "Guerra de preços declarada",
-      corpo:
-        `A tabela caiu ${Math.abs(dPreco).toFixed(1)} pontos em média e alguém, algures, decidiu que a margem é um luxo. ` +
-        `Os consumidores agradecem no imediato; os contabilistas hão-de ajustar as expectativas no fim do trimestre. ` +
-        `Aviso à navegação: quem entra em guerras de preço raramente escreve as memórias.`,
-    };
-  }
-  if (dTier > 0.2) {
-    return {
-      autor: COLUNISTA,
-      titulo: "Corrida à qualidade",
-      corpo:
-        `Sobe o tier médio dos produtos ${dTier.toFixed(1)} degraus. Traduzindo: as casas estão a subir a fasquia ` +
-        `e a passar a fatura ao cliente. Falta ver se o cliente paga com sorriso ou com carteira encolhida.`,
-    };
-  }
-  if (dPreco > 2) {
-    return {
-      autor: COLUNISTA,
-      titulo: "Preços em alta — coragem ou distração?",
-      corpo:
-        `Os preços médios sobem ${dPreco.toFixed(1)} pontos face ao turno anterior. Há quem chame a isto pricing power; ` +
-        `outros preferem chamar-lhe teste de paciência. O mercado dirá.`,
-    };
-  }
+  if (conc >= 4500) return angulo("concentracao", { turno, hhi: Math.round(conc) });
+  if (dConc <= -400) return angulo("fragmentacao", { turno, delta: Math.round(Math.abs(dConc)) });
+  if (dPreco < -3) return angulo("guerra_precos", { turno, delta: Math.abs(dPreco).toFixed(1) });
+  if (dTier > 0.2) return angulo("qualidade", { turno, delta: dTier.toFixed(1) });
+  if (dPreco > 2) return angulo("precos_alta", { turno, delta: dPreco.toFixed(1) });
   // Ângulo genérico só se houver mesmo pouco para dizer
   if (turno <= 1) return null;
-  return {
-    autor: COLUNISTA,
-    titulo: "Um turno sem sobressaltos",
-    corpo:
-      `Se a virtude estivesse em não mexer, teríamos hoje um turno virtuoso. As posições consolidam-se, ` +
-      `as manchetes escasseiam e este colunista prepara-se para a próxima ronda com esperança renovada — ou, ` +
-      `pelo menos, com café mais forte.`,
-  };
+  return angulo("calmo", { turno });
 }
 
 /* ============================================================
@@ -257,8 +245,12 @@ export function anunciosDasCasas(args: {
   snapshotAtual: Snapshot | null;
   decisoes: Partial<Record<Lugar, DecisaoRegisto>>;
   equipa_nome: string;
+  turno?: number;
+  t?: FuncaoTexto;
 }): Anuncio[] {
-  const { rivaisAtuais, rivaisAnteriores, snapshotAtual, decisoes, equipa_nome } = args;
+  const { rivaisAtuais, rivaisAnteriores, decisoes, equipa_nome } = args;
+  const t = args.t ?? T_DEFAULT;
+  const seed = `anuncios:${equipa_nome}:${args.turno ?? 0}`;
   const out: Anuncio[] = [];
 
   // Anúncio da NOSSA casa — derivado das nossas decisões reais
@@ -268,45 +260,30 @@ export function anunciosDasCasas(args: {
   const marketing = Number(cmo?.marketing_total ?? cmo?.marketing ?? 0);
   const exportacao = Boolean(cmo?.exportar ?? cmo?.canal_exportacao ?? false);
   const tierMedio = (() => {
-    const t = coo?.tier ?? coo?.tiers ?? {};
-    if (typeof t === "number") return t;
-    if (t && typeof t === "object") {
-      const vals = Object.values(t).map((v) => Number(v)).filter((n) => Number.isFinite(n));
+    const tt = coo?.tier ?? coo?.tiers ?? {};
+    if (typeof tt === "number") return tt;
+    if (tt && typeof tt === "object") {
+      const vals = Object.values(tt).map((v) => Number(v)).filter((n) => Number.isFinite(n));
       return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
     }
     return 0;
   })();
   const postura = (ceo?.postura ?? ceo?.postura_estrategica ?? null) as string | null;
 
-  if (marketing >= 8000) {
+  const nosso = (chave: string, tamanho: Anuncio["tamanho"]) => {
+    const vars = { equipa: equipa_nome, equipa_maiusculas: equipa_nome.toUpperCase() };
     out.push({
       casa: equipa_nome,
-      tamanho: "grande",
-      titulo: `${equipa_nome.toUpperCase()} — a marca que enche a rua`,
-      corpo: `Da praça ao porto, todos falam. Descubra o catálogo da estação e sinta a diferença de uma casa que investe em si.`,
+      tamanho,
+      titulo: t(`jornal.anuncio.${chave}.titulo`, vars, seed),
+      corpo: t(`jornal.anuncio.${chave}.corpo`, vars, seed),
     });
-  } else if (exportacao) {
-    out.push({
-      casa: equipa_nome,
-      tamanho: "media",
-      titulo: `${equipa_nome} anuncia no porto`,
-      corpo: `Mercadoria pronta para embarque. Contactos preferenciais para clientes de além-mar.`,
-    });
-  } else if (tierMedio >= 2.4) {
-    out.push({
-      casa: equipa_nome,
-      tamanho: "media",
-      titulo: `${equipa_nome} — qualidade superior`,
-      corpo: `Peças de tier alto, acabamento cuidado. Recomenda-se a exigentes.`,
-    });
-  } else if (postura === "agressiva") {
-    out.push({
-      casa: equipa_nome,
-      tamanho: "pequena",
-      titulo: `${equipa_nome} avança`,
-      corpo: `Nova postura, novos preços. Aproxime-se e negocie.`,
-    });
-  }
+  };
+
+  if (marketing >= 8000) nosso("marketing", "grande");
+  else if (exportacao) nosso("exportacao", "media");
+  else if (tierMedio >= 2.4) nosso("qualidade", "media");
+  else if (postura === "agressiva") nosso("agressiva", "pequena");
 
   // Anúncios das rivais — derivados de rank e trajetória de valor
   const mapaAnt = new Map(rivaisAnteriores.map((r) => [r.equipa_id, r.valor]));
@@ -316,11 +293,12 @@ export function anunciosDasCasas(args: {
   // Líder → anúncio de prestígio
   const lider = ord.find((r) => !nossa.has(r.nome));
   if (lider && lider.valor > 0) {
+    const vars = { rival: lider.nome, valor: eur(lider.valor) };
     out.push({
       casa: lider.nome,
       tamanho: "media",
-      titulo: `Casa ${lider.nome} — reputação com selo`,
-      corpo: `A liderar a praça com ${eur(lider.valor)}. Encomendas atendidas por ordem de chegada.`,
+      titulo: t("jornal.anuncio.lider.titulo", vars, seed),
+      corpo: t("jornal.anuncio.lider.corpo", vars, seed),
     });
   }
 
@@ -330,11 +308,12 @@ export function anunciosDasCasas(args: {
     .filter((x) => !nossa.has(x.r.nome) && x.delta > 3000)
     .sort((a, b) => b.delta - a.delta)[0];
   if (saltador) {
+    const vars = { rival: saltador.r.nome };
     out.push({
       casa: saltador.r.nome,
       tamanho: "pequena",
-      titulo: `${saltador.r.nome} anuncia expansão`,
-      corpo: `Nova capacidade instalada. Contratações em curso.`,
+      titulo: t("jornal.anuncio.expansao.titulo", vars, seed),
+      corpo: t("jornal.anuncio.expansao.corpo", vars, seed),
     });
   }
 
@@ -344,11 +323,12 @@ export function anunciosDasCasas(args: {
     .filter((x) => !nossa.has(x.r.nome) && x.delta < -3000)
     .sort((a, b) => a.delta - b.delta)[0];
   if (cadente && cadente.r.valor > 0) {
+    const vars = { rival: cadente.r.nome };
     out.push({
       casa: cadente.r.nome,
       tamanho: "pequena",
-      titulo: `${cadente.r.nome} — liquidação de existências`,
-      corpo: `Aproveite condições especiais enquanto durar o stock.`,
+      titulo: t("jornal.anuncio.liquidacao.titulo", vars, seed),
+      corpo: t("jornal.anuncio.liquidacao.corpo", vars, seed),
     });
   }
 
@@ -358,46 +338,27 @@ export function anunciosDasCasas(args: {
 /* ============================================================
  * CARTAS AO DIRETOR — ocasionais, disparadas por eventos
  * ============================================================ */
-export function cartasAoDiretor(notas: { acao: string; payload?: any }[]): Carta[] {
+export function cartasAoDiretor(
+  notas: { acao: string; payload?: any }[],
+  opcoes?: { turno?: number; t?: FuncaoTexto },
+): Carta[] {
+  const t = opcoes?.t ?? T_DEFAULT;
+  const turno = opcoes?.turno ?? 0;
+  const seed = `cartas:${turno}`;
   const cartas: Carta[] = [];
   const acoes = notas.map((n) => n.acao);
 
-  if (acoes.some((a) => /greve|paraliza/i.test(a))) {
+  const carta = (chave: string) =>
     cartas.push({
-      autor: "Um operário anónimo",
-      assunto: "Paragem no chão de fábrica",
-      corpo:
-        "Senhor Diretor: escrevo-lhe com a mão suja de graxa e a paciência gasta. A greve não é capricho — é a soma " +
-        "de turnos calados e promessas por cumprir. Deem-nos o que é justo, e voltamos ao torno.",
+      autor: t(`jornal.carta.${chave}.autor`, { turno }, seed),
+      assunto: t(`jornal.carta.${chave}.assunto`, { turno }, seed),
+      corpo: t(`jornal.carta.${chave}.corpo`, { turno }, seed),
     });
-  }
-  if (acoes.some((a) => /breakthrough|descoberta|patent/i.test(a))) {
-    cartas.push({
-      autor: "Um investigador entusiasmado",
-      assunto: "Um passo em frente",
-      corpo:
-        "Senhor Diretor: permita-me a euforia — o laboratório encontrou o que procurava. Não é ainda um milagre, mas é " +
-        "seguramente uma vantagem. Peço que a administração dê o tempo justo antes de exigir o retorno.",
-    });
-  }
-  if (acoes.some((a) => /credito_automatica|linha_credito/i.test(a))) {
-    cartas.push({
-      autor: "Um credor prudente",
-      assunto: "Sobre a nova linha de crédito",
-      corpo:
-        "Senhor Diretor: aceito com desagrado que a casa tenha recorrido à linha automática. Compreendo a urgência, " +
-        "mas os juros não perdoam sentimentos. Aguardo o plano de amortização com o interesse de sempre.",
-    });
-  }
-  if (acoes.some((a) => /despedi/i.test(a))) {
-    cartas.push({
-      autor: "Um antigo colega",
-      assunto: "Sobre a despedida",
-      corpo:
-        "Senhor Diretor: a decisão foi tomada e o portão fechou-se. Fica o registo: quem parte leva o que sabia, e " +
-        "quem fica lembra-se. Que a próxima admissão seja feita com o mesmo cuidado com que se assinou a saída.",
-    });
-  }
+
+  if (acoes.some((a) => /greve|paraliza/i.test(a))) carta("greve");
+  if (acoes.some((a) => /breakthrough|descoberta|patent/i.test(a))) carta("breakthrough");
+  if (acoes.some((a) => /credito_automatica|linha_credito/i.test(a))) carta("credito");
+  if (acoes.some((a) => /despedi/i.test(a))) carta("despedimento");
 
   return cartas.slice(0, 2);
 }
@@ -408,11 +369,18 @@ export function cartasAoDiretor(notas: { acao: string; payload?: any }[]): Carta
 export function necrologia(args: {
   rivaisAtuais: Rival[];
   rivaisAnteriores: Rival[];
+  turno?: number;
+  t?: FuncaoTexto;
 }): string[] {
   const { rivaisAtuais, rivaisAnteriores } = args;
+  const t = args.t ?? T_DEFAULT;
+  const turno = args.turno ?? 0;
+  const seed = `necrologia:${turno}`;
   const mapaAnt = new Map(rivaisAnteriores.map((r) => [r.equipa_id, r.valor]));
   const mortas = rivaisAtuais.filter((r) => r.valor <= 0 && (mapaAnt.get(r.equipa_id) ?? 0) > 0);
-  return mortas.map((m) => `Casa ${m.nome} — encerrou portas no turno atual, após ter valido ${eur(mapaAnt.get(m.equipa_id) ?? 0)}. Deixa saudades entre os credores.`);
+  return mortas.map((m) =>
+    t("jornal.necrologia", { rival: m.nome, valor: eur(mapaAnt.get(m.equipa_id) ?? 0), turno }, seed),
+  );
 }
 
 /* ============================================================

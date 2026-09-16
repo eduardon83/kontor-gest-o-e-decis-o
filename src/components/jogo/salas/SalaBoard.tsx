@@ -93,17 +93,26 @@ function BotaoAba({ activa, onClick, children }: { activa: boolean; onClick: () 
 }
 
 function AbaMissao() {
+  const { competicao_id, competicao_nome, equipa_nome } = useJogo() as any;
+  const t = useTextos(competicao_id);
+  const missao = t(
+    "board.missao",
+    { equipa: equipa_nome ?? "a casa", competicao: competicao_nome ?? "a praça" },
+    `board:${competicao_id ?? "demo"}`,
+  );
+  const assinatura = t("board.missao.assinatura", {}, `board:${competicao_id ?? "demo"}`);
   return (
     <>
       <section className="rounded-sm border bg-card p-6">
         <div className="mono text-[10px] uppercase tracking-widest text-gold">Missão da Administração</div>
         <p className="mt-3 font-serif text-xl leading-snug text-foreground">
-          &ldquo;{BOARD.missao}&rdquo;
+          &ldquo;{missao || BOARD.missao}&rdquo;
         </p>
         <div className="mono mt-4 text-[10px] uppercase tracking-widest text-muted-foreground">
-          — Presidente do Conselho de Administração
+          — {assinatura}
         </div>
       </section>
+
 
       <section className="rounded-sm border bg-card">
         <header className="border-b px-6 py-4">

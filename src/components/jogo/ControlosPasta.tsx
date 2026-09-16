@@ -6,6 +6,7 @@ import { TotalComprometidoCompacto } from "./PainelCustosComprometidos";
 import type { Lugar } from "@/lib/jogo/tipos";
 import { capacidadeCOO, tierEfetivo, MAO_MULT, type Tier, type Ritmo } from "@/lib/jogo/capacidade";
 import { ID_NOS } from "@/lib/jogo/id-arvore";
+import { useTextos } from "@/lib/textos/useTextos";
 
 
 
@@ -27,7 +28,8 @@ const INICIAL: Record<Lugar, Record<string, unknown>> = {
 
 
 export function ControlosPasta({ lugar }: { lugar: Lugar }) {
-  const { podeEditar, submetidos, submeterLugar, decisoes, atualizarRascunho, rascunho, guardarNomeEmpresa, nomeEmpresa, snapshotAtual } = useJogo();
+  const { podeEditar, submetidos, submeterLugar, decisoes, atualizarRascunho, rascunho, guardarNomeEmpresa, nomeEmpresa, snapshotAtual, competicao_id } = useJogo() as any;
+  const t = useTextos(competicao_id);
   const editavel = podeEditar(lugar);
   const submetido = submetidos[lugar];
 
@@ -90,7 +92,7 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
                       }`}
                     >
                       <div className="font-serif text-sm">{p.titulo}</div>
-                      <div className="text-[11px] leading-snug text-muted-foreground">{p.descricao}</div>
+                      <div className="text-[11px] leading-snug text-muted-foreground">{t(`interface.postura.${p.valor}`)}</div>
                     </button>
                   );
                 })}

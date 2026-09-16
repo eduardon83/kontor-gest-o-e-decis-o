@@ -203,9 +203,9 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
               rotulo="Canal"
               v={valor.canal}
               opcoes={[
-                { valor: "grosso", titulo: "Grosso", descricao: "Preço realizado ×0,85, +10% alcance — mais volume a margem menor." },
-                { valor: "direto", titulo: "Direto", descricao: "Preço ×1,00, marca +2/turno, −10% alcance; marketing rende ×1,15." },
-                { valor: "exportacao", titulo: "Exportação", descricao: "Preço ×0,72; abre procura externa adicional." },
+                { valor: "grosso", titulo: "Grosso", descricao: t("interface.canal.grosso") },
+                { valor: "direto", titulo: "Direto", descricao: t("interface.canal.direto") },
+                { valor: "exportacao", titulo: "Exportação", descricao: t("interface.canal.exportacao") },
               ]}
               onChange={(o) => up({ canal: o })}
               disabled={!editavel}

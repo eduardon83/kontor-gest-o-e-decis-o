@@ -128,9 +128,9 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
               rotulo="Tier"
               v={valor.tier}
               opcoes={[
-                { valor: "standard", titulo: "Standard", descricao: "Sem I&D. Custo base." },
-                { valor: "fine", titulo: "Fine", descricao: "Requer FINE. +58% mão-de-obra, melhor qualidade." },
-                { valor: "artisan", titulo: "Artisan", descricao: "Requer ARTISAN. +110% mão-de-obra, top qualidade." },
+                { valor: "standard", titulo: "Standard", descricao: t("interface.tier.standard") },
+                { valor: "fine", titulo: "Fine", descricao: t("interface.tier.fine") },
+                { valor: "artisan", titulo: "Artisan", descricao: t("interface.tier.artisan") },
               ]}
               onChange={(o) => up({ tier: o })}
               disabled={!editavel}
@@ -145,10 +145,10 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
               rotulo="Ritmo"
               v={valor.ritmo}
               opcoes={[
-                { valor: "ferias", titulo: "Férias", descricao: "Reinicia o stress mas produz ~0 no turno." },
-                { valor: "folga", titulo: "Folga", descricao: "Alivia stress; reduz capacidade." },
-                { valor: "normal", titulo: "Normal", descricao: "Ritmo base (160 h/trabalhador)." },
-                { valor: "horas_extra", titulo: "Horas extra", descricao: "+40 h/trabalhador; mão-de-obra a 1,5×; +stress." },
+                { valor: "ferias", titulo: "Férias", descricao: t("interface.ritmo.ferias") },
+                { valor: "folga", titulo: "Folga", descricao: t("interface.ritmo.folga") },
+                { valor: "normal", titulo: "Normal", descricao: t("interface.ritmo.normal") },
+                { valor: "horas_extra", titulo: "Horas extra", descricao: t("interface.ritmo.horas_extra") },
               ]}
               onChange={(o) => up({ ritmo: o })}
               disabled={!editavel}
@@ -158,8 +158,8 @@ export function ControlosPasta({ lugar }: { lugar: Lugar }) {
               rotulo="Modo I&D"
               v={valor.id_modo}
               opcoes={[
-                { valor: "interno", titulo: "Interno", descricao: "Investigadores desenvolvem ao longo dos turnos (custo = salário dos investigadores)." },
-                { valor: "licenca", titulo: "Licença", descricao: "Pagamento único de €45.000 — desbloqueia já a tecnologia." },
+                { valor: "interno", titulo: "Interno", descricao: t("interface.id.interno") },
+                { valor: "licenca", titulo: "Licença", descricao: t("interface.id.licenca") },
               ]}
               onChange={(o) => up({ id_modo: o })}
               disabled={!editavel}
